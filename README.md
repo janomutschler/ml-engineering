@@ -16,3 +16,17 @@ Building end-to-end machine learning systems and MLOps workflows - from data pip
 Week 1 covers a Titanic classification assignment with two parts: a scikit-learn logistic regression workflow and a from-scratch NumPy implementation.
 
 More weeks will be added as their subject files become available.
+
+## Quickstart
+
+- This project uses `uv` together with `pyproject.toml` for environment and dependency management. `uv sync --dev` bootstraps an isolated environment automatically (no manual `venv` steps required).
+
+```bash
+# create/sync the project environment and install runtime + dev deps
+uv sync --dev
+
+# run tests via uv
+uv run pytest
+
+```
+
