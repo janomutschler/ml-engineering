@@ -2,6 +2,15 @@
 
 Building end-to-end machine learning systems and MLOps workflows - from data pipelines and model training to experiment tracking and deployment. Developed during the appliedAI ML & MLOps Track (ongoing).
 
+## Current Progress
+
+### Week 1 - Classification
+- [x] Repository setup
+- [x] Python project configuration and CI
+- [x] Titanic exploratory data analysis
+- [ ] Scikit-learn logistic regression baseline
+- [ ] Logistic regression from scratch
+
 ## Structure
 
 - `data/raw/`: source datasets used in the exercises.
