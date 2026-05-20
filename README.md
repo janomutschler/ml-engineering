@@ -13,8 +13,13 @@ The repository evolves throughout the track and covers topics ranging from explo
 - [x] Python project configuration and CI
 - [x] Titanic exploratory data analysis
 - [x] Scikit-learn logistic regression baseline
-- [ ] Logistic regression from scratch using NumPy
+- [x] Logistic regression from scratch using NumPy
+- [x] Custom evaluation metrics and confusion matrix
+- [x] Automated unit tests
+- [x] CI workflow
 
+### Week 2
+- [ ] Upcoming
 ---
 
 ## Repository Structure
@@ -30,13 +35,9 @@ The repository evolves throughout the track and covers topics ranging from explo
 
 ## Current Focus
 
-Week 1 focuses on a Titanic survival classification problem using logistic regression.
+Completed Week 1 on binary classification and logistic regression, including a full NumPy implementation built from scratch.
 
-The assignment consists of:
-1. Building a baseline workflow using scikit-learn
-2. Implementing logistic regression from scratch using NumPy
-
-Future weeks will expand toward more advanced machine learning engineering and MLOps workflows.
+Currently starting Week 2 with a focus on machine learning data pipelines and workflow orchestration.
 
 ---
 
@@ -49,3 +50,24 @@ This project uses `uv` together with `pyproject.toml` for dependency and environ
 ```bash
 # install dependencies and create local environment
 uv sync --dev
+```
+
+---
+
+## Week 1 Contents
+
+### Notebooks
+- `01_eda.ipynb` — exploratory data analysis and preprocessing exploration
+- `02_logreg_sklearn.ipynb` — logistic regression baseline using scikit-learn
+- `03_logreg_numpy.ipynb` — full logistic regression implementation from scratch using NumPy
+
+### Core Concepts Covered
+- binary classification
+- train/test splitting
+- feature standardization
+- logistic regression
+- sigmoid activation
+- binary cross-entropy loss
+- gradient descent optimization
+- custom evaluation metrics
+- automated testing
