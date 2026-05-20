@@ -24,6 +24,7 @@ def train_test_split_numpy(X, y, test_size=0.2, random_state=42):
 
     return X_train, X_test, y_train, y_test
 
+
 def standardize_data(X_train, X_test):
     """
     Standardize features using training set mean and standard deviation.

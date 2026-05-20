@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def accuracy(y_true, y_pred):
     """
     Compute the share of correctly predicted labels.
@@ -44,6 +45,7 @@ def f1_score(y_true, y_pred):
         return 0.0
 
     return 2 * (precision_value * recall_value) / (precision_value + recall_value)
+
 
 def confusion_matrix(y_true, y_pred):
     """
