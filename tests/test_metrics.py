@@ -1,6 +1,6 @@
 import numpy as np
 
-from ml_engineering.evaluation.metrics import (
+from week01.evaluation.metrics import (
     accuracy,
     confusion_matrix,
     f1_score,
