@@ -2,7 +2,7 @@
 
 End-to-end machine learning engineering and MLOps workflows built during the appliedAI ML & MLOps Track (ongoing).
 
-The repository evolves throughout the track and covers topics ranging from exploratory data analysis and model training to reproducible workflows, testing, and deployment-oriented ML systems.
+The repository evolves throughout the track and covers topics ranging from exploratory data analysis and model training to reproducible ML pipelines and workflow orchestration.
 
 ---
 
@@ -18,26 +18,31 @@ The repository evolves throughout the track and covers topics ranging from explo
 - [x] Automated unit tests
 - [x] CI workflow
 
-### Week 2
-- [ ] Upcoming
+### Week 2 — Data Pipeline
+- [x] Project structure initialization
+- [x] Dagster dependencies setup
+- [ ] Bike rental preprocessing pipeline
+- [ ] Feature engineering
+- [ ] Workflow orchestration with Dagster
+
 ---
 
 ## Repository Structure
 
-- `data/raw/` — source datasets used throughout the exercises
-- `notebooks/` — exploratory analysis and model development notebooks
-- `src/` — reusable Python modules and utilities
+- `data/` — raw and processed datasets
+- `docs/` — weekly summaries and documentation
+- `notebooks/` — exploratory analysis and development notebooks
+- `src/` — reusable Python modules and pipeline logic
 - `subjects/` — assignment descriptions and requirements
-- `reports/` — written summaries and exported figures
 - `tests/` — automated tests and validation logic
 
 ---
 
 ## Current Focus
 
-Completed Week 1 on binary classification and logistic regression, including a full NumPy implementation built from scratch.
+Week 1 established the foundations of supervised machine learning using logistic regression and a custom NumPy implementation.
 
-Currently starting Week 2 with a focus on machine learning data pipelines and workflow orchestration.
+Week 2 focuses on building a reusable preprocessing pipeline for a bike-rental forecasting project using pandas and Dagster.
 
 ---
 
@@ -48,7 +53,6 @@ This project uses `uv` together with `pyproject.toml` for dependency and environ
 ### Setup
 
 ```bash
-# install dependencies and create local environment
 uv sync --dev
 ```
 

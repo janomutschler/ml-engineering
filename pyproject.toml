@@ -11,12 +11,14 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "jupyter",
+    "dagster>=1.13.5",
 ]
 
 [dependency-groups]
 dev = [
     "pytest",
     "ruff",
+    "dagster-webserver>=1.13.5",
 ]
 
 [tool.ruff]
