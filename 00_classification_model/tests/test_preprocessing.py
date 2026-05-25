@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-
-from week01.data.preprocessing import (
+from data.preprocessing import (
     standardize_data,
     train_test_split_numpy,
 )

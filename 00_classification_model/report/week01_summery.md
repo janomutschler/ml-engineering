@@ -24,8 +24,9 @@ A logistic regression baseline was implemented using scikit-learn.
 - Precision: 0.754
 - Recall: 0.667
 - F1 Score: 0.708
+- AUC: 0.852
 
-The model achieved solid baseline performance using a relatively small feature set and establishes a reference point for the later NumPy-based implementation.
+The model achieved strong baseline performance while maintaining balanced classification behavior across the evaluation metrics. The ROC AUC score further indicates that the model separates survival and non-survival cases effectively.
 
 ## Logistic Regression from Scratch
 
@@ -42,27 +43,32 @@ The implementation includes:
 - binary classification prediction
 - custom evaluation metrics
 - confusion matrix implementation
+- ROC curve and AUC evaluation
 
 The model was implemented using an object-oriented design inspired by the scikit-learn estimator API.
 
 ### Evaluation Results
-- Accuracy: 0.808
-- Precision: 0.925
-- Recall: 0.544
-- F1 Score: 0.685
+- Accuracy: 0.836
+- Precision: 0.820
+- Recall: 0.735
+- F1 Score: 0.775
+- AUC: 0.870
 
 ## Model Comparison
 
-The custom NumPy implementation was compared against the scikit-learn implementation using the same train-test split and feature scaling pipeline.
+The custom NumPy implementation was compared against the scikit-learn implementation using the same train-test split and feature scaling pipeline. (in the Baseline model the sklearn train-test split was used thats why the sklearn model archives different metrics here then in Logistic Regression Baseline) 
 
 | Metric | NumPy | scikit-learn |
 |---|---|---|
-| Accuracy | 0.808 | 0.831 |
-| Precision | 0.925 | 0.797 |
-| Recall | 0.544 | 0.750 |
-| F1 Score | 0.685 | 0.773 |
+| Accuracy | 0.836 | 0.831 |
+| Precision | 0.820 | 0.797 |
+| Recall | 0.735 | 0.750 |
+| F1 Score | 0.775 | 0.773 |
+| AUC | 0.870 | 0.871 |
 
-The NumPy implementation achieved similar overall behavior and accuracy while exposing the internal mechanics of logistic regression. The scikit-learn implementation produced a more balanced overall performance with higher recall and F1 score, while the NumPy model achieved very high precision but missed more positive survival cases.
+The NumPy implementation achieved very similar overall performance to the scikit-learn model, including nearly identical ROC AUC scores. The comparison between the learned weights and bias values also showed that both implementations converged toward very similar model parameters.
+
+The NumPy implementation achieved slightly higher accuracy, precision, and F1 score, while the scikit-learn model achieved slightly higher recall and AUC. Overall, the results demonstrate that the custom implementation approximates the behavior of the optimized scikit-learn implementation closely while still exposing the internal learning mechanics of logistic regression.
 
 ## Testing
 
@@ -81,12 +87,15 @@ Week 1 established the foundations of the machine learning workflow through expl
 
 In addition to building a logistic regression baseline with scikit-learn, the model was also implemented completely from scratch using NumPy to better understand the mathematical foundations behind binary classification and gradient descent optimization.
 
-Compared to the scikit-learn baseline, the NumPy implementation achieved similar overall behavior while exposing the internal mechanics of logistic regression, including probability prediction, loss computation, gradient calculation, and parameter updates through gradient descent.
+Compared to the scikit-learn baseline, the NumPy implementation achieved very similar overall behavior and evaluation performance, including nearly identical ROC AUC scores. The comparison of the learned weights and bias values also showed that both implementations converged toward very similar model parameters.
+
+At the same time, implementing logistic regression from scratch exposed the internal mechanics of the algorithm, including probability prediction, sigmoid activation, loss computation, gradient calculation, and parameter updates through gradient descent. This helped build a deeper understanding of how machine learning models learn from data beyond using high-level library abstractions.
 
 The project now includes:
 - reproducible preprocessing utilities
 - a custom logistic regression implementation
 - custom evaluation metrics
+- ROC curve and AUC evaluation
 - automated unit tests
 - CI integration
 - structured project organization

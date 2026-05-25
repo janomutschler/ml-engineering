@@ -2,16 +2,12 @@ import numpy as np
 
 
 def accuracy(y_true, y_pred):
-    """
-    Compute the share of correctly predicted labels.
-    """
+    """Compute the share of correctly predicted labels."""
     return np.mean(y_true == y_pred)
 
 
 def precision(y_true, y_pred):
-    """
-    Compute precision: true positives divided by all predicted positives.
-    """
+    """Compute precision: true positives divided by all predicted positives."""
     true_positives = np.sum((y_true == 1) & (y_pred == 1))
     predicted_positives = np.sum(y_pred == 1)
 
@@ -22,9 +18,7 @@ def precision(y_true, y_pred):
 
 
 def recall(y_true, y_pred):
-    """
-    Compute recall: true positives divided by all actual positives.
-    """
+    """Compute recall: true positives divided by all actual positives."""
     true_positives = np.sum((y_true == 1) & (y_pred == 1))
     actual_positives = np.sum(y_true == 1)
 
@@ -35,9 +29,7 @@ def recall(y_true, y_pred):
 
 
 def f1_score(y_true, y_pred):
-    """
-    Compute F1 score as the harmonic mean of precision and recall.
-    """
+    """Compute F1 score as the harmonic mean of precision and recall."""
     precision_value = precision(y_true, y_pred)
     recall_value = recall(y_true, y_pred)
 
@@ -48,12 +40,12 @@ def f1_score(y_true, y_pred):
 
 
 def confusion_matrix(y_true, y_pred):
-    """
-    Compute a binary confusion matrix.
+    """Compute a binary confusion matrix.
 
     Returns:
         [[true_negatives, false_positives],
          [false_negatives, true_positives]]
+
     """
     true_negatives = np.sum((y_true == 0) & (y_pred == 0))
     false_positives = np.sum((y_true == 0) & (y_pred == 1))

@@ -1,6 +1,5 @@
 import numpy as np
-
-from week01.evaluation.metrics import (
+from evaluation.metrics import (
     accuracy,
     confusion_matrix,
     f1_score,
