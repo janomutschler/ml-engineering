@@ -1,13 +1,12 @@
 import numpy as np
-
-from week01.evaluation.metrics import (
+from evaluation.metrics import (
     accuracy,
     confusion_matrix,
     f1_score,
     precision,
     recall,
 )
-from week01.models.logistic_regression import LogisticRegressionScratch
+from models.logistic_regression import LogisticRegressionScratch
 
 
 def test_sigmoid_outputs_expected_values():

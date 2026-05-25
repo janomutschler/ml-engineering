@@ -2,9 +2,7 @@ import numpy as np
 
 
 def train_test_split_numpy(X, y, test_size=0.2, random_state=42):
-    """
-    Split features and targets into randomized training and test sets.
-    """
+    """Split features and targets into randomized training and test sets."""
     rng = np.random.default_rng(random_state)
 
     n_samples = X.shape[0]
@@ -26,15 +24,13 @@ def train_test_split_numpy(X, y, test_size=0.2, random_state=42):
 
 
 def standardize_data(X_train, X_test):
-    """
-    Standardize features using training set mean and standard deviation.
-    """
-    mean = X_train.mean(axis=0)
-    std = X_train.std(axis=0)
+    """Standardize features using training set mean and standard deviation."""
+    means = X_train.mean(axis=0)
+    stds = X_train.std(axis=0)
 
-    std[std == 0] = 1
+    stds[stds == 0] = 1
 
-    X_train_scaled = (X_train - mean) / std
-    X_test_scaled = (X_test - mean) / std
+    X_train_scaled = (X_train - means) / stds
+    X_test_scaled = (X_test - means) / stds
 
     return X_train_scaled, X_test_scaled

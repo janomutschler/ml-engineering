@@ -26,8 +26,14 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B"]
+select = ["E", "F", "I", "B", "UP", "W"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["src"]
+testpaths = [
+    "00_classification_model/tests",
+    "01_bike_rental_forecasting/tests"
+]
+pythonpath = [
+    "00_classification_model/src",
+    "01_bike_rental_forecasting/src"
+]
