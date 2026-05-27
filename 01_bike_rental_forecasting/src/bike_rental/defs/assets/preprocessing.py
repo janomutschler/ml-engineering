@@ -3,44 +3,37 @@
 from dagster import MaterializeResult, asset
 
 from bike_rental.defs.preprocessing.aggregation import aggregate_hourly_rentals
-from bike_rental.defs.utils.metadata import build_dataframe_metadata
-from bike_rental.defs.preprocessing.enrichment import join_weather_data, join_holiday_data
+from bike_rental.defs.preprocessing.enrichment import join_holiday_data, join_weather_data
 from bike_rental.defs.preprocessing.feature_engineering import add_time_features
+from bike_rental.defs.utils.metadata import build_dataframe_metadata, build_missing_weather_metadata
+
 
 @asset(group_name="preprocessing")
 def hourly_rentals(prepared_operational_rentals):
-	"""Materialize hourly location-level rental demand."""
-	rentals = aggregate_hourly_rentals(prepared_operational_rentals)
+    """Materialize hourly location-level rental demand."""
+    rentals = aggregate_hourly_rentals(prepared_operational_rentals)
 
-	return MaterializeResult(
-		value=rentals,
-		metadata=build_dataframe_metadata(rentals),
-	)
+    return MaterializeResult(
+        value=rentals,
+        metadata=build_dataframe_metadata(rentals),
+    )
+
 
 @asset(group_name="preprocessing")
 def rentals_with_weather(hourly_rentals, prepared_weather):
-	"""Materialize hourly rentals enriched with weather features."""
-	rentals = join_weather_data(hourly_rentals, prepared_weather)
+    """Materialize hourly rentals enriched with weather features."""
+    rentals = join_weather_data(hourly_rentals, prepared_weather)
 
-	weather_missing_values = {
-		column: int(rentals[column].isna().sum())
-		for column in [
-			"conditions",
-			"temperature_c",
-			"perceived_temperature_c",
-			"humidity",
-			"windspeed_kmh",
-		]
-	}
-	return MaterializeResult(
-		value=rentals,
-		metadata=build_dataframe_metadata(
-			rentals,
-			extra_metadata={
-				"weather_missing_values": weather_missing_values,
-			},
-		),
-	)
+    return MaterializeResult(
+        value=rentals,
+        metadata=build_dataframe_metadata(
+            rentals,
+            extra_metadata={
+                "missing_weather_values": build_missing_weather_metadata(rentals),
+            },
+        ),
+    )
+
 
 @asset(group_name="preprocessing")
 def rentals_with_weather_and_holidays(rentals_with_weather, prepared_holidays):
@@ -53,19 +46,23 @@ def rentals_with_weather_and_holidays(rentals_with_weather, prepared_holidays):
             rentals,
             extra_metadata={
                 "holiday_rows": int(rentals["is_holiday"].sum()),
+                "missing_weather_values": build_missing_weather_metadata(rentals),
             },
         ),
     )
 
+
 @asset(group_name="preprocessing")
 def base_dataset(rentals_with_weather_and_holidays):
-    """
-    Adds calendar-based time features and
-    Materialize the curated base dataset for downstream analysis and ML workflows.
-    """
+    """Materialize the curated base dataset for downstream analysis and ML workflows."""
     rentals = add_time_features(rentals_with_weather_and_holidays)
 
     return MaterializeResult(
         value=rentals,
-        metadata=build_dataframe_metadata(rentals),
+        metadata=build_dataframe_metadata(
+            rentals,
+            extra_metadata={
+                "missing_weather_values": build_missing_weather_metadata(rentals),
+            },
+        ),
     )

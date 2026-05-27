@@ -36,6 +36,7 @@ def join_weather_data(
         ["datetime_hour", "location_id"],
     ).reset_index(drop=True)
 
+
 def join_holiday_data(
     rentals_with_weather: pd.DataFrame,
     prepared_holidays: pd.DataFrame,

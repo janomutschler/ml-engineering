@@ -2,6 +2,7 @@
 
 import pandas as pd
 
+
 def build_quarantine_reason(reason_masks: dict[str, pd.Series]) -> pd.Series:
     """Build quarantine reason text from validation masks."""
     reasons = pd.Series("", index=next(iter(reason_masks.values())).index)

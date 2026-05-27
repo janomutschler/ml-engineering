@@ -3,15 +3,15 @@
 import pandas as pd
 from dagster import MaterializeResult, asset
 
+from bike_rental.defs.resources.logging import logger
 from bike_rental.defs.resources.paths import (
     BOOKED_RENTALS_PATH,
     DIRECT_PICKUPS_PATH,
     HOLIDAYS_PATH,
     WEATHER_PATH,
 )
-
-from bike_rental.defs.resources.logging import logger
 from bike_rental.defs.utils.metadata import build_dataframe_metadata
+
 
 def _load_csv(path):
     """Load a CSV file from disk.
@@ -59,8 +59,6 @@ def raw_weather():
         value=df,
         metadata=build_dataframe_metadata(df),
     )
-
-
 
 
 @asset(group_name="raw_data")

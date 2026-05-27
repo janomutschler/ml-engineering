@@ -4,7 +4,6 @@ import pandas as pd
 
 from bike_rental.defs.preprocessing.validate import validate_required_columns
 
-
 FEATURED_RENTAL_COLUMNS = [
     "datetime_hour",
     "date",

@@ -2,6 +2,7 @@
 
 import pandas as pd
 
+
 def validate_required_columns(
     data: pd.DataFrame,
     required_columns: set[str],
