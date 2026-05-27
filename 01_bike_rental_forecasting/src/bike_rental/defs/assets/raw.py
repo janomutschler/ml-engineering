@@ -1,7 +1,7 @@
-import logging
+"""Dagster assets for loading raw bike rental source datasets."""
 
 import pandas as pd
-from dagster import MaterializeResult, MetadataValue, asset
+from dagster import MaterializeResult, asset
 
 from bike_rental.defs.resources.paths import (
     BOOKED_RENTALS_PATH,
@@ -11,19 +11,15 @@ from bike_rental.defs.resources.paths import (
 )
 
 from bike_rental.defs.resources.logging import logger
-
+from bike_rental.defs.utils.metadata import build_dataframe_metadata
 
 def _load_csv(path):
     """Load a CSV file from disk.
 
-    Parameters
-    ----------
     path : pathlib.Path
         Path to the CSV file.
 
-    Returns
-    -------
-    pandas.DataFrame
+    Returns: pandas.DataFrame
         Loaded CSV data.
     """
     logger.info("Loading CSV file from %s", path)
@@ -32,64 +28,47 @@ def _load_csv(path):
     return df
 
 
-@asset
+@asset(group_name="raw_data")
 def raw_booked_rentals():
     """Load raw booked bike rental records."""
     df = _load_csv(BOOKED_RENTALS_PATH)
 
     return MaterializeResult(
         value=df,
-        metadata={
-            "rows": len(df),
-            "columns": len(df.columns),
-            "column_names": df.columns.tolist(),
-            "preview": MetadataValue.md(df.head().to_markdown()),
-        },
+        metadata=build_dataframe_metadata(df),
     )
 
 
-@asset
+@asset(group_name="raw_data")
 def raw_direct_pickups():
     """Load raw direct bike pickup records."""
     df = _load_csv(DIRECT_PICKUPS_PATH)
 
     return MaterializeResult(
         value=df,
-        metadata={
-            "rows": len(df),
-            "columns": len(df.columns),
-            "column_names": df.columns.tolist(),
-            "preview": MetadataValue.md(df.head().to_markdown()),
-        },
+        metadata=build_dataframe_metadata(df),
     )
 
 
-@asset
+@asset(group_name="raw_data")
 def raw_weather():
     """Load raw weather records."""
     df = _load_csv(WEATHER_PATH)
 
     return MaterializeResult(
         value=df,
-        metadata={
-            "rows": len(df),
-            "columns": len(df.columns),
-            "column_names": df.columns.tolist(),
-            "preview": MetadataValue.md(df.head().to_markdown()),
-        },
+        metadata=build_dataframe_metadata(df),
     )
 
-@asset
+
+
+
+@asset(group_name="raw_data")
 def raw_holidays():
     """Load raw holiday calendar records."""
     df = _load_csv(HOLIDAYS_PATH)
 
     return MaterializeResult(
         value=df,
-        metadata={
-            "rows": len(df),
-            "columns": len(df.columns),
-            "column_names": df.columns.tolist(),
-            "preview": MetadataValue.md(df.head().to_markdown()),
-        },
+        metadata=build_dataframe_metadata(df),
     )
