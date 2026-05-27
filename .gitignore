@@ -31,3 +31,8 @@ dist/
 
 # template files
 templates/
+
+# querentine files
+quarantine/
+
+processed/

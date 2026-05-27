@@ -1,5 +1,6 @@
 import numpy as np
-from evaluation.metrics import (
+
+from classification_model.evaluation.metrics import (
     accuracy,
     confusion_matrix,
     f1_score,

@@ -1,7 +1,7 @@
 [project]
-name = "ml-engineering"
+name = "classification-model"
 version = "0.1.0"
-description = "End-to-end machine learning engineering and MLOps workflows built during the appliedAI ML & MLOps Track."
+description = "Week 1 classification model assignment for the appliedAI ML & MLOps Track."
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
@@ -11,15 +11,17 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "jupyter",
-    "dagster>=1.13.5",
 ]
 
 [dependency-groups]
 dev = [
     "pytest",
     "ruff",
-    "dagster-webserver>=1.13.5",
 ]
+
+[build-system]
+requires = ["uv_build>=0.10.2,<0.11.0"]
+build-backend = "uv_build"
 
 [tool.ruff]
 line-length = 100
@@ -29,11 +31,5 @@ target-version = "py311"
 select = ["E", "F", "I", "B", "UP", "W"]
 
 [tool.pytest.ini_options]
-testpaths = [
-    "00_classification_model/tests",
-    "01_bike_rental_forecasting/tests"
-]
-pythonpath = [
-    "00_classification_model/src",
-    "01_bike_rental_forecasting/src"
-]
+testpaths = ["tests"]
+pythonpath = ["src"]

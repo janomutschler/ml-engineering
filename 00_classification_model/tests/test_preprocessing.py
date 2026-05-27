@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
-from data.preprocessing import (
+
+from classification_model.data.preprocessing import (
     standardize_data,
     train_test_split_numpy,
 )
