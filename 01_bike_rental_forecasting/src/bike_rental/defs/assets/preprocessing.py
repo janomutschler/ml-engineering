@@ -5,6 +5,7 @@ from dagster import MaterializeResult, asset
 from bike_rental.defs.preprocessing.aggregation import aggregate_hourly_rentals
 from bike_rental.defs.utils.metadata import build_dataframe_metadata
 from bike_rental.defs.preprocessing.enrichment import join_weather_data, join_holiday_data
+from bike_rental.defs.preprocessing.feature_engineering import add_time_features
 
 @asset(group_name="preprocessing")
 def hourly_rentals(prepared_operational_rentals):
@@ -54,4 +55,17 @@ def rentals_with_weather_and_holidays(rentals_with_weather, prepared_holidays):
                 "holiday_rows": int(rentals["is_holiday"].sum()),
             },
         ),
+    )
+
+@asset(group_name="preprocessing")
+def base_dataset(rentals_with_weather_and_holidays):
+    """
+    Adds calendar-based time features and
+    Materialize the curated base dataset for downstream analysis and ML workflows.
+    """
+    rentals = add_time_features(rentals_with_weather_and_holidays)
+
+    return MaterializeResult(
+        value=rentals,
+        metadata=build_dataframe_metadata(rentals),
     )
