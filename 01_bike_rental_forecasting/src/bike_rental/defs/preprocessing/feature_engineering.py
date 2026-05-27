@@ -4,7 +4,7 @@ import pandas as pd
 
 from bike_rental.defs.preprocessing.validate import validate_required_columns
 
-FEATURED_RENTAL_COLUMNS = [
+BASE_DATASET_COLUMNS = [
     "datetime_hour",
     "date",
     "location_id",
@@ -40,4 +40,4 @@ def add_time_features(rentals: pd.DataFrame) -> pd.DataFrame:
     featured_rentals["month"] = featured_rentals["datetime_hour"].dt.month
     featured_rentals["is_weekend"] = featured_rentals["weekday"] >= 5
 
-    return featured_rentals[FEATURED_RENTAL_COLUMNS].reset_index(drop=True)
+    return featured_rentals[BASE_DATASET_COLUMNS].reset_index(drop=True)
