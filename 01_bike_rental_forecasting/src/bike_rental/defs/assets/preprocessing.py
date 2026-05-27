@@ -52,7 +52,10 @@ def rentals_with_weather_and_holidays(rentals_with_weather, prepared_holidays):
     )
 
 
-@asset(group_name="preprocessing")
+@asset(
+    group_name="preprocessing",
+    io_manager_key="csv_io_manager",
+)
 def base_dataset(rentals_with_weather_and_holidays):
     """Materialize the curated base dataset for downstream analysis and ML workflows."""
     rentals = add_time_features(rentals_with_weather_and_holidays)

@@ -27,6 +27,8 @@ def prepared_operational_rentals(raw_booked_rentals, raw_direct_pickups):
     if not invalid_rentals.empty:
         QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
         invalid_rentals.to_csv(OPERATIONAL_RENTALS_QUARANTINE_PATH, index=False)
+    else:
+        OPERATIONAL_RENTALS_QUARANTINE_PATH.unlink(missing_ok=True)
 
     return MaterializeResult(
         value=valid_rentals,
@@ -48,6 +50,8 @@ def prepared_weather(raw_weather):
     if not invalid_weather.empty:
         QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
         invalid_weather.to_csv(WEATHER_QUARANTINE_PATH, index=False)
+    else:
+        WEATHER_QUARANTINE_PATH.unlink(missing_ok=True)
 
     return MaterializeResult(
         value=valid_weather,
@@ -70,6 +74,8 @@ def prepared_holidays(raw_holidays):
     if not invalid_holidays.empty:
         QUARANTINE_DIR.mkdir(parents=True, exist_ok=True)
         invalid_holidays.to_csv(HOLIDAYS_QUARANTINE_PATH, index=False)
+    else:
+        HOLIDAYS_QUARANTINE_PATH.unlink(missing_ok=True)
 
     return MaterializeResult(
         value=valid_holidays,

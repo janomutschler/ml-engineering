@@ -18,4 +18,4 @@ OPERATIONAL_RENTALS_QUARANTINE_PATH = QUARANTINE_DIR / "operational_rentals_quar
 WEATHER_QUARANTINE_PATH = QUARANTINE_DIR / "weather_quarantine.csv"
 HOLIDAYS_QUARANTINE_PATH = QUARANTINE_DIR / "holidays_quarantine.csv"
 
-FINAL_DATASET_PATH = PROCESSED_DATA_DIR / "final_preprocessed_dataset.csv"
+BASE_DATASET_PATH = PROCESSED_DATA_DIR / "final_preprocessed_dataset.csv"

@@ -19,6 +19,8 @@ from bike_rental.defs.assets.raw import (
     raw_holidays,
     raw_weather,
 )
+from bike_rental.defs.io_managers.csv_io_manager import CsvIOManager
+from bike_rental.defs.resources.paths import PROCESSED_DATA_DIR
 
 defs = Definitions(
     assets=[
@@ -33,5 +35,10 @@ defs = Definitions(
         rentals_with_weather,
         rentals_with_weather_and_holidays,
         base_dataset,
-    ]
+    ],
+    resources={
+        "csv_io_manager": CsvIOManager(
+            base_path=str(PROCESSED_DATA_DIR),
+        ),
+    },
 )
