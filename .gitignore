@@ -34,3 +34,5 @@ templates/
 
 # querentine files
 quarantine/
+
+processed/
