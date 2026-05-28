@@ -43,7 +43,7 @@ The implementation includes:
 - binary classification prediction
 - custom evaluation metrics
 - confusion matrix implementation
-- ROC curve and AUC evaluation
+- ROC AUC evaluation
 
 The model was implemented using an object-oriented design inspired by the scikit-learn estimator API.
 
@@ -95,7 +95,7 @@ The project now includes:
 - reproducible preprocessing utilities
 - a custom logistic regression implementation
 - custom evaluation metrics
-- ROC curve and AUC evaluation
+- ROC AUC evaluation
 - automated unit tests
 - CI integration
 - structured project organization

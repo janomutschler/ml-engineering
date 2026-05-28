@@ -78,7 +78,7 @@ development, experimentation, and presentation.
 - [x] Logistic regression with scikit-learn
 - [x] Logistic regression from scratch using NumPy
 - [x] Custom evaluation metrics
-- [x] ROC curve and AUC evaluation
+- [x] ROC AUC evaluation
 - [x] Automated unit tests
 - [x] CI integration
 - [x] Model comparison and parameter analysis
