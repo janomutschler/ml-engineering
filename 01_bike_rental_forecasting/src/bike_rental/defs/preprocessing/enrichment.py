@@ -9,7 +9,22 @@ def join_weather_data(
     hourly_rentals: pd.DataFrame,
     prepared_weather: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Join hourly weather features onto hourly rental demand."""
+    """Join hourly weather features onto hourly rental demand.
+
+    Rows are first enriched with weather observations based on the hourly timestamp.
+
+    The preprocessing pipeline generates a complete hourly location grid to ensure
+    that zero-demand periods are represented in the forecasting dataset. However,
+    some timestamps do not exist in the weather dataset and may also represent
+    periods with incomplete operational source coverage rather than true zero-demand
+    hours.
+
+    To avoid introducing misleading observations into the machine learning dataset,
+    timestamps without both weather coverage and observed rental activity are
+    removed after the join step. Any remaining missing weather
+    values are treated as a data quality issue and raise an error instead of
+    being silently imputed.
+    """
     validate_required_columns(
         hourly_rentals,
         {"datetime_hour", "location_id", "total_rentals"},
@@ -31,6 +46,24 @@ def join_weather_data(
         on="datetime_hour",
         how="left",
     )
+
+    weather_columns = [column for column in weather_features.columns if column != "datetime_hour"]
+
+    enriched_rentals["has_weather_data"] = ~enriched_rentals[weather_columns].isna().all(axis=1)
+
+    timestamp_activity = enriched_rentals.groupby("datetime_hour")["total_rentals"].transform("sum")
+
+    valid_timestamp = enriched_rentals["has_weather_data"] | (timestamp_activity > 0)
+
+    enriched_rentals = enriched_rentals.loc[valid_timestamp].copy()
+
+    missing_weather_counts = enriched_rentals[weather_columns].isna().sum()
+
+    if missing_weather_counts.any():
+        raise ValueError(
+            "Weather join produced partially missing weather features after filtering. "
+            f"Missing counts: {missing_weather_counts[missing_weather_counts > 0].to_dict()}"
+        )
 
     return enriched_rentals.sort_values(
         ["datetime_hour", "location_id"],
