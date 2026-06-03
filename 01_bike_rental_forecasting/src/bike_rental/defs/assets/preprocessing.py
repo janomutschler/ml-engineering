@@ -1,71 +1,193 @@
 """Dagster assets for preprocessing bike rental datasets."""
 
-from dagster import MaterializeResult, asset
+import pandas as pd
+from dagster import AssetExecutionContext, asset
 
-from bike_rental.defs.preprocessing.aggregation import aggregate_hourly_rentals
-from bike_rental.defs.preprocessing.enrichment import join_holiday_data, join_weather_data
-from bike_rental.defs.preprocessing.feature_engineering import add_time_features
-from bike_rental.defs.utils.metadata import build_dataframe_metadata, build_missing_weather_metadata
-
-
-@asset(group_name="preprocessing")
-def hourly_rentals(prepared_operational_rentals):
-    """Materialize hourly location-level rental demand."""
-    rentals = aggregate_hourly_rentals(prepared_operational_rentals)
-
-    return MaterializeResult(
-        value=rentals,
-        metadata=build_dataframe_metadata(rentals),
-    )
-
-
-@asset(group_name="preprocessing")
-def rentals_with_weather(hourly_rentals, prepared_weather):
-    """Materialize hourly rentals enriched with weather features."""
-    rentals = join_weather_data(hourly_rentals, prepared_weather)
-
-    return MaterializeResult(
-        value=rentals,
-        metadata=build_dataframe_metadata(
-            rentals,
-            extra_metadata={
-                "missing_weather_values": build_missing_weather_metadata(rentals),
-            },
-        ),
-    )
-
-
-@asset(group_name="preprocessing")
-def rentals_with_weather_and_holidays(rentals_with_weather, prepared_holidays):
-    """Materialize rentals with weather enriched with holiday information."""
-    rentals = join_holiday_data(rentals_with_weather, prepared_holidays)
-
-    return MaterializeResult(
-        value=rentals,
-        metadata=build_dataframe_metadata(
-            rentals,
-            extra_metadata={
-                "holiday_rows": int(rentals["is_holiday"].sum()),
-                "missing_weather_values": build_missing_weather_metadata(rentals),
-            },
-        ),
-    )
+from bike_rental.defs.constants import BIKE_RENTAL_FEATURE_COLUMNS
+from bike_rental.defs.preprocessing.aggregation import aggregate_hourly_rental_activity
+from bike_rental.defs.preprocessing.calendar_features import create_calendar_features
+from bike_rental.defs.preprocessing.weather import clean_weather_data
+from bike_rental.defs.utils.metadata import build_dataframe_metadata
 
 
 @asset(
     group_name="preprocessing",
+    metadata={"datetime_columns": ["datetime_hour"]},
     io_manager_key="csv_io_manager",
 )
-def base_dataset(rentals_with_weather_and_holidays):
-    """Materialize the curated base dataset for downstream analysis and ML workflows."""
-    rentals = add_time_features(rentals_with_weather_and_holidays)
+def hourly_rental_activity(
+    context: AssetExecutionContext,
+    booked_rentals: pd.DataFrame,
+    direct_pickups: pd.DataFrame,
+) -> pd.DataFrame:
+    """Create hourly rental activity from rental events.
 
-    return MaterializeResult(
-        value=rentals,
-        metadata=build_dataframe_metadata(
-            rentals,
-            extra_metadata={
-                "missing_weather_values": build_missing_weather_metadata(rentals),
-            },
-        ),
+    Parameters
+    ----------
+    context : AssetExecutionContext
+        Dagster execution context.
+    booked_rentals : pd.DataFrame
+        Booked rental records.
+    direct_pickups : pd.DataFrame
+        Direct pickup records.
+
+    Returns
+    -------
+    pd.DataFrame
+        Hourly rental activity dataset.
+
+    """
+    hourly_activity = aggregate_hourly_rental_activity(
+        booked_rentals=booked_rentals,
+        direct_pickups=direct_pickups,
     )
+
+    context.log.info(
+        "Created hourly rental activity with %s rows",
+        len(hourly_activity),
+    )
+
+    context.add_output_metadata(
+        build_dataframe_metadata(hourly_activity),
+    )
+
+    return hourly_activity
+
+
+@asset(
+    group_name="preprocessing",
+    metadata={"datetime_columns": ["datetime"]},
+    io_manager_key="csv_io_manager",
+)
+def weather_cleaned(
+    context: AssetExecutionContext,
+    weather: pd.DataFrame,
+) -> pd.DataFrame:
+    """Clean weather observations for downstream feature generation.
+
+    Parameters
+    ----------
+    context : AssetExecutionContext
+        Dagster execution context used for logging and metadata.
+    weather : pd.DataFrame
+        Weather observations containing hourly weather measurements.
+
+    Returns
+    -------
+    pd.DataFrame
+        Cleaned weather observations with corrected anomalies and imputed
+        humidity values.
+
+    """
+    cleaned_weather, cleaning_metadata = clean_weather_data(weather)
+
+    context.add_output_metadata(
+        build_dataframe_metadata(
+            cleaned_weather,
+            extra_metadata=cleaning_metadata,
+        )
+    )
+
+    return cleaned_weather
+
+
+@asset(
+    group_name="preprocessing",
+    metadata={"datetime_columns": ["datetime_hour"]},
+    io_manager_key="csv_io_manager",
+)
+def calendar_features(
+    context: AssetExecutionContext,
+    hourly_rental_activity: pd.DataFrame,
+    holidays: pd.DataFrame,
+) -> pd.DataFrame:
+    """Create calendar features for the hourly rental timeline.
+
+    Parameters
+    ----------
+    context : AssetExecutionContext
+        Dagster execution context.
+    hourly_rental_activity : pd.DataFrame
+        Hourly rental activity dataset.
+    holidays : pd.DataFrame
+        Holiday calendar dataset.
+
+    Returns
+    -------
+    pd.DataFrame
+        Hourly calendar feature dataset.
+
+    """
+    features = create_calendar_features(
+        hourly_rental_activity=hourly_rental_activity,
+        holidays=holidays,
+    )
+
+    context.log.info("Created calendar features with %s rows", len(features))
+
+    context.add_output_metadata(
+        build_dataframe_metadata(
+            features,
+            extra_metadata={
+                "weekend_hours": int(features["is_weekend"].sum()),
+                "holiday_hours": int(features["is_holiday"].sum()),
+            },
+        )
+    )
+
+    return features
+
+
+@asset(
+    group_name="preprocessing",
+    metadata={"datetime_columns": ["datetime_hour"]},
+    io_manager_key="csv_io_manager",
+)
+def bike_rental_features(
+    context: AssetExecutionContext,
+    hourly_rental_activity: pd.DataFrame,
+    weather_cleaned: pd.DataFrame,
+    calendar_features: pd.DataFrame,
+) -> pd.DataFrame:
+    """Create the final bike rental feature dataset.
+
+    Parameters
+    ----------
+    context : AssetExecutionContext
+        Dagster execution context.
+    hourly_rental_activity : pd.DataFrame
+        Hourly rental activity dataset.
+    weather_cleaned : pd.DataFrame
+        Cleaned weather dataset.
+    calendar_features : pd.DataFrame
+        Calendar feature dataset.
+
+    Returns
+    -------
+    pd.DataFrame
+        Combined bike rental feature dataset.
+
+    """
+    feature_set = hourly_rental_activity.merge(
+        weather_cleaned,
+        left_on="datetime_hour",
+        right_on="datetime",
+        how="left",
+    )
+
+    feature_set = feature_set.merge(
+        calendar_features,
+        on="datetime_hour",
+        how="left",
+    )
+
+    feature_set = feature_set[BIKE_RENTAL_FEATURE_COLUMNS]
+
+    context.log.info(
+        "Created bike rental feature dataset with %s rows",
+        len(feature_set),
+    )
+
+    context.add_output_metadata(build_dataframe_metadata(feature_set))
+
+    return feature_set

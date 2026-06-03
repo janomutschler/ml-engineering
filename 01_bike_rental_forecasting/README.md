@@ -26,18 +26,19 @@ The project aims to:
 
 ### Week 2 — Data Pipeline ✅
 
+### Week 2 — Data Pipeline ✅
+
 Implemented components include:
 
-* exploratory preprocessing workflow design in notebooks
-* modular Dagster asset pipeline implementation
-* raw operational, weather, and holiday dataset ingestion
-* structured dataset validation and quarantine handling
-* hourly aggregation of rental activity
-* weather and holiday enrichment
-* temporal feature engineering
-* curated base dataset materialization
-* custom Dagster CSV IO manager integration
+* source dataset ingestion through reusable Dagster resources
+* custom CSV IO manager for asset persistence
+* source dataset schema validation with asset checks
+* hourly rental activity aggregation
+* weather anomaly correction and humidity imputation
+* calendar feature generation
+* unified bike rental feature dataset creation
 * structured metadata tracking and logging
+* reusable preprocessing transformations
 * automated tests and CI validation
 
 ### Week 3 — EDA and Bike Rental Predictions (in progress)

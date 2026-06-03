@@ -2,19 +2,6 @@
 
 from dagster import MetadataValue
 
-WEATHER_FEATURE_COLUMNS = [
-    "conditions",
-    "temperature_c",
-    "perceived_temperature_c",
-    "humidity",
-    "windspeed_kmh",
-]
-
-
-def build_missing_weather_metadata(data) -> dict:
-    """Build metadata about missing weather feature values."""
-    return {column: int(data[column].isna().sum()) for column in WEATHER_FEATURE_COLUMNS}
-
 
 def build_dataframe_metadata(
     data,
