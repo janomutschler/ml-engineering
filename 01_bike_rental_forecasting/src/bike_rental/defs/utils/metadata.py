@@ -2,6 +2,7 @@
 
 from dagster import MetadataValue
 
+
 def build_dataframe_metadata(
     data,
     preview_rows: int = 5,
