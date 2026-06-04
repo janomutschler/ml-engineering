@@ -181,6 +181,12 @@ def bike_rental_features(
         how="left",
     )
 
+    empty_hours_mask = feature_set["temperature_c"].isna()
+
+    feature_set = feature_set.loc[~empty_hours_mask].reset_index(drop=True)
+
+    removed_empty_hours = int(empty_hours_mask.sum())
+
     feature_set = feature_set[BIKE_RENTAL_FEATURE_COLUMNS]
 
     context.log.info(
@@ -188,6 +194,13 @@ def bike_rental_features(
         len(feature_set),
     )
 
-    context.add_output_metadata(build_dataframe_metadata(feature_set))
+    context.add_output_metadata(
+        build_dataframe_metadata(
+            feature_set,
+            extra_metadata={
+                "empty_hours_removed": removed_empty_hours,
+            },
+        )
+    )
 
     return feature_set
