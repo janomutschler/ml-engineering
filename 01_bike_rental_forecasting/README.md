@@ -26,8 +26,6 @@ The project aims to:
 
 ### Week 2 — Data Pipeline ✅
 
-### Week 2 — Data Pipeline ✅
-
 Implemented components include:
 
 * source dataset ingestion through reusable Dagster resources
@@ -46,28 +44,31 @@ Implemented components include:
 Current progress includes:
 
 * comprehensive exploratory data analysis
-* data quality validation and anomaly detection
-* temporal demand pattern analysis
-* weather impact analysis
-* feature relationship and correlation analysis
-* forecasting-oriented modeling considerations
+* data quality validation and consistency checks
+* baseline forecasting models
+* cyclical temporal feature engineering
+* historical demand lag features
+* contextual historical demand aggregations
+* feature selection and evaluation
+* Random Forest forecasting model
+* XGBoost forecasting model
+* feature importance analysis
+* model comparison and benchmarking
 
 Upcoming work:
 
-* feature engineering
-* lag and rolling-window features
-* baseline regression model development
-* model evaluation and comparison
 * Dagster pipeline integration
 
 ## Planned Future Work
 
-* forecasting model training
-* time-series evaluation workflows
+* Dagster integration of feature engineering workflow
+* automated model training pipelines
 * experiment tracking with MLflow
+* model versioning and management
 * workflow orchestration improvements
-* feature store and model management concepts
-* inference and deployment workflows
+* inference and prediction workflows
+* monitoring and model performance tracking
+* deployment-oriented MLOps workflows
 
 ## Project Structure
 
@@ -89,6 +90,7 @@ Upcoming work:
 * Python
 * pandas
 * scikit-learn
+* XGBoost
 * Dagster
 * MLflow
 * Jupyter Notebooks
