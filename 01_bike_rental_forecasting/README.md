@@ -39,9 +39,9 @@ Implemented components include:
 * reusable preprocessing transformations
 * automated tests and CI validation
 
-### Week 3 — EDA and Bike Rental Predictions (in progress)
+### Week 3 — EDA and Bike Rental Predictions ✅
 
-Current progress includes:
+Implemented components include:
 
 * comprehensive exploratory data analysis
 * data quality validation and consistency checks
@@ -54,15 +54,19 @@ Current progress includes:
 * XGBoost forecasting model
 * feature importance analysis
 * model comparison and benchmarking
+* Dagster-based feature engineering assets
+* chronological train-test splitting assets
+* automated model training assets
+* automated model evaluation assets
 
-Upcoming work:
+Results:
 
-* Dagster pipeline integration
+* XGBoost achieved an R² score above 0.918
+* historical demand features provided the strongest predictive signal
+* the complete forecasting workflow was integrated into Dagster
 
 ## Planned Future Work
 
-* Dagster integration of feature engineering workflow
-* automated model training pipelines
 * experiment tracking with MLflow
 * model versioning and management
 * workflow orchestration improvements
