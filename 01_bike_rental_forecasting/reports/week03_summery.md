@@ -145,6 +145,23 @@ These findings confirm the conclusions from the exploratory analysis and feature
 
 ---
 
+## Pipeline Integration
+
+The forecasting workflow was integrated into the existing Dagster pipeline to enable reproducible feature generation, model training, and model evaluation.
+
+Implemented assets include:
+
+* Modeling feature set generation
+* Cyclical temporal feature creation
+* Historical demand feature generation
+* Chronological train-test splitting
+* XGBoost model training
+* Automated model evaluation
+
+The resulting asset graph extends the Week 2 preprocessing pipeline with a complete machine learning workflow, allowing the forecasting process to be materialized end-to-end through Dagster.
+
+---
+
 ## Key Findings
 
 Several important conclusions emerged from the forecasting workflow:
@@ -155,6 +172,7 @@ Several important conclusions emerged from the forecasting workflow:
 * Weather contributes useful information but is less influential than temporal demand behavior.
 * Feature engineering provides larger performance gains than model selection alone.
 * XGBoost achieved the strongest forecasting performance among all evaluated models.
+* The final forecasting workflow was successfully integrated into Dagster and can be executed as a reproducible asset pipeline.
 
 ---
 
@@ -164,11 +182,12 @@ The results of Week 3 establish a strong forecasting foundation for the remainde
 
 Future work will focus on:
 
-* Integrating the selected feature engineering workflow into Dagster assets
-* Automating model training and evaluation
-* Experiment tracking and model management
-* Pipeline orchestration and reproducibility
-* MLOps-oriented deployment workflows
+* Experiment tracking with MLflow
+* Model versioning and management
+* Automated retraining workflows
+* Workflow orchestration improvements
+* Inference and prediction workflows
 * Monitoring and maintaining forecasting performance over time
+* Deployment-oriented MLOps workflows
 
-The selected feature set and XGBoost model provide a strong candidate for future integration into the production-oriented forecasting pipeline.
+The selected feature set and XGBoost model provide a strong candidate for future production-oriented forecasting and MLOps workflows.

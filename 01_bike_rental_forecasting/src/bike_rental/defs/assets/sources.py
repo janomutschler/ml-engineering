@@ -13,7 +13,6 @@ from bike_rental.defs.resources.data_loader import LocalDataLoader
 
 
 @asset(
-    group_name="source_data",
     metadata={"datetime_columns": ["datetime"]},
     io_manager_key="csv_io_manager",
 )
@@ -36,7 +35,6 @@ def booked_rentals(
 
 
 @asset(
-    group_name="source_data",
     metadata={"datetime_columns": ["datetime"]},
     io_manager_key="csv_io_manager",
 )
@@ -59,7 +57,6 @@ def direct_pickups(
 
 
 @asset(
-    group_name="source_data",
     metadata={"datetime_columns": ["datetime"]},
     io_manager_key="csv_io_manager",
 )
@@ -82,7 +79,6 @@ def weather(
 
 
 @asset(
-    group_name="source_data",
     metadata={"datetime_columns": ["date"]},
     io_manager_key="csv_io_manager",
 )

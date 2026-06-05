@@ -5,6 +5,8 @@ DIRECT_PICKUPS_FILE = "direct_pickup_bike_rentals.csv"
 WEATHER_FILE = "weather.csv"
 HOLIDAYS_FILE = "holidays.csv"
 
+TRAIN_RATIO = 0.8
+
 TARGET_COLUMN = "total_rentals"
 
 BOOKED_RENTALS_COLUMNS = {
@@ -50,4 +52,25 @@ BIKE_RENTAL_FEATURE_COLUMNS = [
     "booked_rentals",
     "direct_pickups",
     "total_rentals",
+]
+
+SELECTED_FEATURE_COLUMNS = [
+    "temperature_c",
+    "perceived_temperature_c",
+    "humidity",
+    "windspeed_kmh",
+    "weekday",
+    "is_weekend",
+    "is_holiday",
+    "conditions_clouds",
+    "conditions_heavy_rain",
+    "conditions_light_rain",
+    "hour_sin",
+    "hour_cos",
+    "month_sin",
+    "month_cos",
+    "lag_24h",
+    "lag_168h",
+    "same_weekday_hour_mean_4w",
+    "same_hour_mean_7d",
 ]

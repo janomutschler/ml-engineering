@@ -9,10 +9,14 @@ from bike_rental.defs.asset_checks.asset_checks import (
     hourly_rental_activity_has_continuous_hours,
     weather_schema,
 )
+from bike_rental.defs.assets.evaluation import model_evaluation_metrics
+from bike_rental.defs.assets.models import xgboost_forecasting_model
 from bike_rental.defs.assets.preprocessing import (
     bike_rental_features,
     calendar_features,
     hourly_rental_activity,
+    modeling_feature_set,
+    train_test_split,
     weather_cleaned,
 )
 from bike_rental.defs.assets.sources import (
@@ -34,6 +38,10 @@ defs = Definitions(
         weather_cleaned,
         calendar_features,
         bike_rental_features,
+        modeling_feature_set,
+        train_test_split,
+        xgboost_forecasting_model,
+        model_evaluation_metrics,
     ],
     asset_checks=[
         booked_rentals_schema,
