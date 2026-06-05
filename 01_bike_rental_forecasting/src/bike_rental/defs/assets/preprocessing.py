@@ -1,17 +1,26 @@
 """Dagster assets for preprocessing bike rental datasets."""
 
 import pandas as pd
-from dagster import AssetExecutionContext, asset
+from dagster import AssetExecutionContext, AssetOut, asset, multi_asset
 
-from bike_rental.defs.constants import BIKE_RENTAL_FEATURE_COLUMNS
+from bike_rental.defs.constants import (
+    BIKE_RENTAL_FEATURE_COLUMNS,
+    SELECTED_FEATURE_COLUMNS,
+    TARGET_COLUMN,
+    TRAIN_RATIO,
+)
 from bike_rental.defs.preprocessing.aggregation import aggregate_hourly_rental_activity
 from bike_rental.defs.preprocessing.calendar_features import create_calendar_features
+from bike_rental.defs.preprocessing.feature_transforms import (
+    add_cyclical_features,
+    add_historical_demand_features,
+    one_hot_encode_column,
+)
 from bike_rental.defs.preprocessing.weather import clean_weather_data
-from bike_rental.defs.utils.metadata import build_dataframe_metadata
+from bike_rental.defs.utils.metadata import build_dataframe_metadata, build_output
 
 
 @asset(
-    group_name="preprocessing",
     metadata={"datetime_columns": ["datetime_hour"]},
     io_manager_key="csv_io_manager",
 )
@@ -55,7 +64,6 @@ def hourly_rental_activity(
 
 
 @asset(
-    group_name="preprocessing",
     metadata={"datetime_columns": ["datetime"]},
     io_manager_key="csv_io_manager",
 )
@@ -92,7 +100,6 @@ def weather_cleaned(
 
 
 @asset(
-    group_name="preprocessing",
     metadata={"datetime_columns": ["datetime_hour"]},
     io_manager_key="csv_io_manager",
 )
@@ -139,7 +146,6 @@ def calendar_features(
 
 
 @asset(
-    group_name="preprocessing",
     metadata={"datetime_columns": ["datetime_hour"]},
     io_manager_key="csv_io_manager",
 )
@@ -204,3 +210,155 @@ def bike_rental_features(
     )
 
     return feature_set
+
+
+@asset(
+    metadata={"datetime_columns": ["datetime_hour"]},
+    io_manager_key="csv_io_manager",
+)
+def modeling_feature_set(
+    context: AssetExecutionContext,
+    bike_rental_features: pd.DataFrame,
+) -> pd.DataFrame:
+    """Create the final modeling feature set used for bike rental forecasting.
+
+    Parameters
+    ----------
+    context : AssetExecutionContext
+        Dagster execution context.
+    bike_rental_features : pd.DataFrame
+        Prepared bike rental dataset produced by the preprocessing pipeline.
+
+    Returns
+    -------
+    pd.DataFrame
+        Modeling-ready dataset containing engineered forecasting features.
+
+    """
+    df = bike_rental_features
+
+    context.log.info(
+        "Creating modeling feature set from %s input rows.",
+        len(df),
+    )
+
+    df = one_hot_encode_column(
+        df,
+        column="conditions",
+    )
+
+    df = add_cyclical_features(df, column="hour", period=24)
+    df = add_cyclical_features(df, column="month", period=12)
+
+    df = add_historical_demand_features(
+        df,
+        target_column=TARGET_COLUMN,
+        hour_column="hour",
+        weekday_column="weekday",
+    )
+
+    rows_before_dropna = len(df)
+
+    df = df.dropna().reset_index(drop=True)
+
+    rows_removed = rows_before_dropna - len(df)
+
+    context.log.info(
+        "Removed %s rows without sufficient historical context.",
+        rows_removed,
+    )
+
+    context.add_output_metadata(
+        build_dataframe_metadata(
+            df,
+            extra_metadata={
+                "rows_removed": rows_removed,
+                "generated_features": 8,
+            },
+        )
+    )
+
+    return df
+
+
+@multi_asset(
+    outs={
+        "X_train": AssetOut(io_manager_key="csv_io_manager"),
+        "X_test": AssetOut(io_manager_key="csv_io_manager"),
+        "y_train": AssetOut(io_manager_key="csv_io_manager"),
+        "y_test": AssetOut(io_manager_key="csv_io_manager"),
+    },
+)
+def train_test_split(
+    context: AssetExecutionContext,
+    modeling_feature_set: pd.DataFrame,
+):
+    """Split the modeling feature set into chronological train and test datasets.
+
+    Parameters
+    ----------
+    context : AssetExecutionContext
+        Dagster execution context.
+    modeling_feature_set : pd.DataFrame
+        Modeling-ready dataset containing engineered forecasting features.
+
+    Yields
+    ------
+    Output
+        Feature and target datasets for training and evaluation.
+
+    """
+    df = modeling_feature_set.sort_values("datetime_hour").reset_index(drop=True)
+
+    X = df[SELECTED_FEATURE_COLUMNS]
+    y = df[TARGET_COLUMN]
+
+    split_idx = int(len(df) * TRAIN_RATIO)
+
+    X_train = X.iloc[:split_idx]
+    X_test = X.iloc[split_idx:]
+
+    y_train = y.iloc[:split_idx].to_frame(name=TARGET_COLUMN)
+    y_test = y.iloc[split_idx:].to_frame(name=TARGET_COLUMN)
+
+    context.log.info(
+        "Created chronological train-test split with %s training rows and %s test rows.",
+        len(X_train),
+        len(X_test),
+    )
+
+    yield build_output(
+        X_train,
+        "X_train",
+        {
+            "split": "train",
+            "dataset_type": "features",
+        },
+    )
+
+    yield build_output(
+        X_test,
+        "X_test",
+        {
+            "split": "test",
+            "dataset_type": "features",
+        },
+    )
+
+    yield build_output(
+        y_train,
+        "y_train",
+        {
+            "split": "train",
+            "dataset_type": "target",
+        },
+    )
+
+    yield build_output(
+        y_test,
+        "y_test",
+        {
+            "split": "test",
+            "dataset_type": "target",
+        },
+    )
