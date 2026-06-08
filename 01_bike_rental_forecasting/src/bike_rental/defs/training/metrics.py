@@ -1,0 +1,45 @@
+"""Regression evaluation metrics for the forecasting workflow."""
+
+import numpy as np
+from numpy.typing import ArrayLike
+from sklearn.metrics import (
+    mean_absolute_error,
+    r2_score,
+    root_mean_squared_error,
+    root_mean_squared_log_error,
+)
+
+
+def regression_metrics(
+    y_true: ArrayLike,
+    y_pred: ArrayLike,
+) -> dict[str, float]:
+    """Compute regression metrics on the original target scale.
+
+    Reports a log-scale error (RMSLE) alongside MAE, RMSE, and R². RMSLE
+    penalizes relative rather than absolute error, which is informative for
+    skewed demand data. It is undefined for negative inputs, so predictions are
+    clipped at zero before it is computed; the demand target is itself
+    non-negative.
+
+    Parameters
+    ----------
+    y_true : ArrayLike
+        Observed target values.
+    y_pred : ArrayLike
+        Predicted target values on the original scale.
+
+    Returns
+    -------
+    dict[str, float]
+        Metrics keyed by ``mae``, ``rmse``, ``rmsle``, and ``r2``.
+
+    """
+    y_pred_non_negative = np.clip(y_pred, 0, None)
+
+    return {
+        "mae": float(mean_absolute_error(y_true, y_pred)),
+        "rmse": float(root_mean_squared_error(y_true, y_pred)),
+        "rmsle": float(root_mean_squared_log_error(y_true, y_pred_non_negative)),
+        "r2": float(r2_score(y_true, y_pred)),
+    }

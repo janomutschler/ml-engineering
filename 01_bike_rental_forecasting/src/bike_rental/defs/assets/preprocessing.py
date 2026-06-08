@@ -1,13 +1,11 @@
 """Dagster assets for preprocessing bike rental datasets."""
 
 import pandas as pd
-from dagster import AssetExecutionContext, AssetOut, asset, multi_asset
+from dagster import AssetExecutionContext, asset
 
 from bike_rental.defs.constants import (
     BIKE_RENTAL_FEATURE_COLUMNS,
-    SELECTED_FEATURE_COLUMNS,
     TARGET_COLUMN,
-    TRAIN_RATIO,
 )
 from bike_rental.defs.preprocessing.aggregation import aggregate_hourly_rental_activity
 from bike_rental.defs.preprocessing.calendar_features import create_calendar_features
@@ -17,13 +15,10 @@ from bike_rental.defs.preprocessing.feature_transforms import (
     one_hot_encode_column,
 )
 from bike_rental.defs.preprocessing.weather import clean_weather_data
-from bike_rental.defs.utils.metadata import build_dataframe_metadata, build_output
+from bike_rental.defs.utils.metadata import build_dataframe_metadata
 
 
-@asset(
-    metadata={"datetime_columns": ["datetime_hour"]},
-    io_manager_key="csv_io_manager",
-)
+@asset(io_manager_key="parquet_io_manager")
 def hourly_rental_activity(
     context: AssetExecutionContext,
     booked_rentals: pd.DataFrame,
@@ -63,10 +58,7 @@ def hourly_rental_activity(
     return hourly_activity
 
 
-@asset(
-    metadata={"datetime_columns": ["datetime"]},
-    io_manager_key="csv_io_manager",
-)
+@asset(io_manager_key="parquet_io_manager")
 def weather_cleaned(
     context: AssetExecutionContext,
     weather: pd.DataFrame,
@@ -99,10 +91,7 @@ def weather_cleaned(
     return cleaned_weather
 
 
-@asset(
-    metadata={"datetime_columns": ["datetime_hour"]},
-    io_manager_key="csv_io_manager",
-)
+@asset(io_manager_key="parquet_io_manager")
 def calendar_features(
     context: AssetExecutionContext,
     hourly_rental_activity: pd.DataFrame,
@@ -145,10 +134,7 @@ def calendar_features(
     return features
 
 
-@asset(
-    metadata={"datetime_columns": ["datetime_hour"]},
-    io_manager_key="csv_io_manager",
-)
+@asset(io_manager_key="parquet_io_manager")
 def bike_rental_features(
     context: AssetExecutionContext,
     hourly_rental_activity: pd.DataFrame,
@@ -212,10 +198,7 @@ def bike_rental_features(
     return feature_set
 
 
-@asset(
-    metadata={"datetime_columns": ["datetime_hour"]},
-    io_manager_key="csv_io_manager",
-)
+@asset(io_manager_key="parquet_io_manager")
 def modeling_feature_set(
     context: AssetExecutionContext,
     bike_rental_features: pd.DataFrame,
@@ -279,86 +262,3 @@ def modeling_feature_set(
     )
 
     return df
-
-
-@multi_asset(
-    outs={
-        "X_train": AssetOut(io_manager_key="csv_io_manager"),
-        "X_test": AssetOut(io_manager_key="csv_io_manager"),
-        "y_train": AssetOut(io_manager_key="csv_io_manager"),
-        "y_test": AssetOut(io_manager_key="csv_io_manager"),
-    },
-)
-def train_test_split(
-    context: AssetExecutionContext,
-    modeling_feature_set: pd.DataFrame,
-):
-    """Split the modeling feature set into chronological train and test datasets.
-
-    Parameters
-    ----------
-    context : AssetExecutionContext
-        Dagster execution context.
-    modeling_feature_set : pd.DataFrame
-        Modeling-ready dataset containing engineered forecasting features.
-
-    Yields
-    ------
-    Output
-        Feature and target datasets for training and evaluation.
-
-    """
-    df = modeling_feature_set.sort_values("datetime_hour").reset_index(drop=True)
-
-    X = df[SELECTED_FEATURE_COLUMNS]
-    y = df[TARGET_COLUMN]
-
-    split_idx = int(len(df) * TRAIN_RATIO)
-
-    X_train = X.iloc[:split_idx]
-    X_test = X.iloc[split_idx:]
-
-    y_train = y.iloc[:split_idx].to_frame(name=TARGET_COLUMN)
-    y_test = y.iloc[split_idx:].to_frame(name=TARGET_COLUMN)
-
-    context.log.info(
-        "Created chronological train-test split with %s training rows and %s test rows.",
-        len(X_train),
-        len(X_test),
-    )
-
-    yield build_output(
-        X_train,
-        "X_train",
-        {
-            "split": "train",
-            "dataset_type": "features",
-        },
-    )
-
-    yield build_output(
-        X_test,
-        "X_test",
-        {
-            "split": "test",
-            "dataset_type": "features",
-        },
-    )
-
-    yield build_output(
-        y_train,
-        "y_train",
-        {
-            "split": "train",
-            "dataset_type": "target",
-        },
-    )
-
-    yield build_output(
-        y_test,
-        "y_test",
-        {
-            "split": "test",
-            "dataset_type": "target",
-        },
-    )

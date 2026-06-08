@@ -1,4 +1,4 @@
-"""Local CSV IO manager for persisting pandas DataFrame assets."""
+"""Local Parquet IO manager for persisting pandas DataFrame assets."""
 
 from pathlib import Path
 
@@ -6,8 +6,8 @@ import pandas as pd
 from dagster import ConfigurableIOManager, InputContext, OutputContext
 
 
-class LocalCsvIOManager(ConfigurableIOManager):
-    """Persist pandas DataFrame assets as local CSV files."""
+class LocalParquetIOManager(ConfigurableIOManager):
+    """Persist pandas DataFrame assets as local Parquet files."""
 
     base_path: str = "data/processed"
     project_root: str = "."
@@ -26,20 +26,20 @@ class LocalCsvIOManager(ConfigurableIOManager):
         self,
         context: OutputContext | InputContext,
     ) -> Path:
-        """Build the local CSV path for an asset."""
+        """Build the local Parquet path for an asset."""
         asset_name = context.asset_key.path[-1]
-        return self.resolved_base_path / f"{asset_name}.csv"
+        return self.resolved_base_path / f"{asset_name}.parquet"
 
     def handle_output(
         self,
         context: OutputContext,
         obj: pd.DataFrame,
     ) -> None:
-        """Persist a DataFrame asset to a local CSV file."""
+        """Persist a DataFrame asset to a local Parquet file."""
         path = self._get_path(context)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        obj.to_csv(path, index=False)
+        obj.to_parquet(path, index=False)
 
         context.log.info(
             "Wrote asset '%s' with %s rows and %s columns to %s",
@@ -54,6 +54,7 @@ class LocalCsvIOManager(ConfigurableIOManager):
                 "output_path": str(path),
                 "rows": len(obj),
                 "columns": len(obj.columns),
+                "storage_format": "parquet",
             }
         )
 
@@ -61,7 +62,7 @@ class LocalCsvIOManager(ConfigurableIOManager):
         self,
         context: InputContext,
     ) -> pd.DataFrame:
-        """Load a persisted local CSV asset as a DataFrame."""
+        """Load a persisted local Parquet asset as a DataFrame."""
         path = self._get_path(context)
 
         context.log.info(
@@ -70,13 +71,10 @@ class LocalCsvIOManager(ConfigurableIOManager):
             path,
         )
 
-        df = pd.read_csv(path)
+        df = pd.read_parquet(path)
 
-        metadata = context.upstream_output.definition_metadata
-        datetime_columns = metadata.get("datetime_columns", [])
-
-        for column in datetime_columns:
-            df[column] = pd.to_datetime(df[column], errors="raise")
+        if df.empty:
+            raise ValueError(f"Loaded empty DataFrame from {path}")
 
         context.log.info(
             "Loaded upstream asset '%s' with %s rows and %s columns",
