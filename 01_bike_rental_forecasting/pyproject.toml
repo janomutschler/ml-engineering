@@ -19,6 +19,7 @@ dependencies = [
     "uvicorn>=0.48.0",
     "lakefs-spec>=0.14.0",
     "pyarrow>=24.0.0",
+    "lightgbm>=4.6.0",
 ]
 
 [dependency-groups]
