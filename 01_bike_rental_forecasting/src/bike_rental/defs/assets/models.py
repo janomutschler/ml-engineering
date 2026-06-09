@@ -1,4 +1,4 @@
-"""Dagster asset for training, evaluating, and registering the forecasting model."""
+"""Dagster asset for backtesting, training, and registering the forecasting model."""
 
 import mlflow
 import mlflow.sklearn
@@ -8,8 +8,11 @@ from mlflow.models import infer_signature
 
 from bike_rental.defs.resources.mlflow import MlflowResource
 from bike_rental.defs.resources.training_config import TrainingConfigResource
-from bike_rental.defs.training.metrics import regression_metrics
+from bike_rental.defs.training.backtest import walk_forward_backtest
 from bike_rental.defs.utils.git import get_git_commit
+from bike_rental.defs.utils.metadata import build_dataframe_metadata
+
+_METRICS = ("mae", "rmse", "rmsle", "r2")
 
 
 @asset
@@ -19,14 +22,18 @@ def trained_forecasting_model(
     training_config: TrainingConfigResource,
     mlflow_tracking: MlflowResource,
 ) -> str:
-    """Train, evaluate, and register the forecasting model, tracked in MLflow.
+    """Backtest, train, and register the forecasting model in one MLflow run.
 
-    The chronological split is derived in-process from the shared training
-    configuration. The model is fit on the training period, scored on the
-    hold-out test period, and logged to MLflow with its parameters, hold-out
-    metrics, signature, input example, and run provenance (Dagster run id and
-    git commit). The model is registered as a new version of the configured
-    registered model.
+    The model build has two stages, recorded together so the registered model
+    version links directly to the evidence that justifies it:
+
+    1. Evaluate the recipe with a walk-forward backtest across ``n_splits``
+       expanding folds. The per-fold and aggregate cross-validation metrics
+       are the honest estimate of how this configuration generalizes
+       over time.
+    2. Produce the artifact by fitting the same configuration on all available
+       data and registering it. The deployed model uses the full history; the
+       backtest, not a held-out slice, is its performance estimate.
 
     Parameters
     ----------
@@ -35,23 +42,20 @@ def trained_forecasting_model(
     modeling_feature_set : pd.DataFrame
         Modeling-ready dataset containing engineered forecasting features.
     training_config : TrainingConfigResource
-        Shared training configuration (split definition and model selection).
+        Shared training configuration (model selection and backtest settings).
     mlflow_tracking : MlflowResource
         MLflow connection and run lifecycle.
 
     Returns
     -------
     str
-        The MLflow model URI of the logged model.
+        The MLflow model URI of the registered model.
 
     """
-    split = training_config.split(modeling_feature_set)
-    model = training_config.build_model()
+    feature_columns = training_config.feature_columns
+    target_column = training_config.target_column
 
-    run_tags = {
-        "dagster_run_id": context.run_id,
-        "dagster_asset": context.asset_key.to_user_string(),
-    }
+    run_tags = {"dagster_run_id": context.run_id}
     git_commit = get_git_commit()
     if git_commit:
         run_tags["git_commit"] = git_commit
@@ -59,27 +63,42 @@ def trained_forecasting_model(
     with mlflow_tracking.run(run_name=training_config.model_type, tags=run_tags) as active_run:
         mlflow.log_params(training_config.mlflow_params())
 
-        model.fit(split.X_train, split.y_train)
-        predictions = model.predict(split.X_test)
-        metrics = regression_metrics(split.y_test, predictions)
-
-        mlflow.log_metrics(
-            {
-                "holdout_mae": metrics["mae"],
-                "holdout_rmse": metrics["rmse"],
-                "holdout_rmsle": metrics["rmsle"],
-                "holdout_r2": metrics["r2"],
-                "training_rows": len(split.X_train),
-                "test_rows": len(split.X_test),
-            }
+        # Stage 1: evaluate the recipe with a walk-forward backtest.
+        fold_metrics = walk_forward_backtest(
+            modeling_feature_set,
+            make_model=training_config.build_model,
+            feature_columns=feature_columns,
+            target_column=target_column,
+            time_column=training_config.time_column,
+            n_splits=training_config.n_splits,
         )
 
-        signature = infer_signature(split.X_train, model.predict(split.X_train))
+        for _, fold in fold_metrics.iterrows():
+            mlflow.log_metrics(
+                {metric: float(fold[metric]) for metric in _METRICS},
+                step=int(fold["fold"]),
+            )
+
+        aggregates = {f"mean_{metric}": float(fold_metrics[metric].mean()) for metric in _METRICS}
+        aggregates.update(
+            {f"std_{metric}": float(fold_metrics[metric].std()) for metric in _METRICS}
+        )
+        mlflow.log_metrics(aggregates)
+
+        # Stage 2: fit the final model on all data and register it.
+        ordered = modeling_feature_set.sort_values(training_config.time_column)
+        X_all = ordered[feature_columns]
+        y_all = ordered[target_column]
+
+        final_model = training_config.build_model()
+        final_model.fit(X_all, y_all)
+
+        signature = infer_signature(X_all, final_model.predict(X_all))
         model_info = mlflow.sklearn.log_model(
-            sk_model=model,
+            sk_model=final_model,
             name=training_config.model_type,
             signature=signature,
-            input_example=split.X_train.head(),
+            input_example=X_all.head(),
             registered_model_name=mlflow_tracking.registered_model_name,
         )
 
@@ -88,11 +107,15 @@ def trained_forecasting_model(
     registered_version = getattr(model_info, "registered_model_version", None)
 
     context.log.info(
-        "Logged %s to MLflow run %s (registered version %s); hold-out R² %.3f.",
+        "Backtested and registered %s (run %s, version %s): "
+        "CV R² %.3f (±%.3f), CV MAE %.2f over %s folds.",
         training_config.model_type,
         run_id,
         registered_version,
-        metrics["r2"],
+        aggregates["mean_r2"],
+        aggregates["std_r2"],
+        aggregates["mean_mae"],
+        training_config.n_splits,
     )
 
     context.add_output_metadata(
@@ -102,11 +125,12 @@ def trained_forecasting_model(
             "registered_model": mlflow_tracking.registered_model_name,
             "registered_version": MetadataValue.text(str(registered_version)),
             "model_type": training_config.model_type,
-            "log_target": training_config.log_target,
-            "holdout_mae": metrics["mae"],
-            "holdout_rmse": metrics["rmse"],
-            "holdout_rmsle": metrics["rmsle"],
-            "holdout_r2": metrics["r2"],
+            "n_splits": training_config.n_splits,
+            "mean_r2": aggregates["mean_r2"],
+            "std_r2": aggregates["std_r2"],
+            "mean_mae": aggregates["mean_mae"],
+            "mean_rmsle": aggregates["mean_rmsle"],
+            "backtest_folds": build_dataframe_metadata(fold_metrics)["preview"],
         }
     )
 
