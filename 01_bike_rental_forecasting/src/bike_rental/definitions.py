@@ -10,6 +10,7 @@ from bike_rental.defs.asset_checks.asset_checks import (
     weather_schema,
 )
 from bike_rental.defs.assets.models import trained_forecasting_model
+from bike_rental.defs.assets.promotion import model_promotion
 from bike_rental.defs.assets.preprocessing import (
     bike_rental_features,
     calendar_features,
@@ -41,6 +42,7 @@ defs = Definitions(
         bike_rental_features,
         modeling_feature_set,
         trained_forecasting_model,
+        model_promotion,
     ],
     asset_checks=[
         booked_rentals_schema,
