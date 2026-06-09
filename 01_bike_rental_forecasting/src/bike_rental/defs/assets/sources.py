@@ -12,7 +12,10 @@ from bike_rental.defs.constants import (
 from bike_rental.defs.resources.data_loader import LocalDataLoader
 
 
-@asset(io_manager_key="parquet_io_manager")
+@asset(
+    metadata={"datetime_columns": ["datetime"]},
+    io_manager_key="parquet_io_manager",
+)
 def booked_rentals(
     context: AssetExecutionContext,
     data_loader: LocalDataLoader,
@@ -31,7 +34,10 @@ def booked_rentals(
     )
 
 
-@asset(io_manager_key="parquet_io_manager")
+@asset(
+    metadata={"datetime_columns": ["datetime"]},
+    io_manager_key="parquet_io_manager",
+)
 def direct_pickups(
     context: AssetExecutionContext,
     data_loader: LocalDataLoader,
@@ -50,7 +56,10 @@ def direct_pickups(
     )
 
 
-@asset(io_manager_key="parquet_io_manager")
+@asset(
+    metadata={"datetime_columns": ["datetime"]},
+    io_manager_key="parquet_io_manager",
+)
 def weather(
     context: AssetExecutionContext,
     data_loader: LocalDataLoader,

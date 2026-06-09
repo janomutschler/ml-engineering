@@ -1,5 +1,7 @@
 """Training configuration resource for the bike rental forecasting pipeline."""
 
+from typing import Any
+
 import pandas as pd
 from dagster import Config, ConfigurableResource
 from pydantic import Field
@@ -18,6 +20,19 @@ class XGBoostParams(Config):
     subsample: float = 0.8
     colsample_bytree: float = 0.8
     objective: str = "reg:squarederror"
+
+
+class LightGBMParams(Config):
+    """Tunable hyperparameters for the LightGBM forecasting model."""
+
+    n_estimators: int = 300
+    learning_rate: float = 0.05
+    max_depth: int = -1
+    num_leaves: int = 31
+    subsample: float = 0.8
+    colsample_bytree: float = 0.8
+    reg_alpha: float = 0.0
+    reg_lambda: float = 1.0
 
 
 class RandomForestParams(Config):
@@ -55,6 +70,7 @@ class TrainingConfigResource(ConfigurableResource):
     xgboost: XGBoostParams = Field(default_factory=XGBoostParams)
     random_forest: RandomForestParams = Field(default_factory=RandomForestParams)
     linear_regression: LinearRegressionParams = Field(default_factory=LinearRegressionParams)
+    lightgbm: LightGBMParams = Field(default_factory=LightGBMParams)
 
     random_state: int = 42
     log_target: bool = False
@@ -69,12 +85,13 @@ class TrainingConfigResource(ConfigurableResource):
             train_ratio=self.train_ratio,
         )
 
-    def _active_params(self) -> dict:
-        """Select the hyperparameter block matching ``model_type``."""
+    def active_params(self) -> dict[str, Any]:
+        """Return the hyperparameter block matching ``model_type``."""
         blocks = {
             "xgboost": self.xgboost,
             "random_forest": self.random_forest,
             "linear_regression": self.linear_regression,
+            "lightgbm": self.lightgbm,
             "dummy_mean": None,
         }
         if self.model_type not in blocks:
@@ -87,7 +104,20 @@ class TrainingConfigResource(ConfigurableResource):
         """Build the configured forecasting estimator."""
         return build_model(
             model_type=self.model_type,
-            params=self._active_params(),
+            params=self.active_params(),
             random_state=self.random_state,
             log_target=self.log_target,
         )
+
+    def mlflow_params(self) -> dict[str, Any]:
+        """Flatten the configuration into a dict of MLflow params to log."""
+        params: dict[str, Any] = {
+            "model_type": self.model_type,
+            "log_target": self.log_target,
+            "train_ratio": self.train_ratio,
+            "random_state": self.random_state,
+            "feature_count": len(self.feature_columns),
+            "target_column": self.target_column,
+        }
+        params.update(self.active_params())
+        return params

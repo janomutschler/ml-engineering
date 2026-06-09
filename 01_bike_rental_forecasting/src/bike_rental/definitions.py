@@ -1,6 +1,6 @@
 """Dagster asset and resource definitions for the bike rental project."""
 
-from dagster import Definitions
+from dagster import Definitions, EnvVar
 
 from bike_rental.defs.asset_checks.asset_checks import (
     booked_rentals_schema,
@@ -26,6 +26,7 @@ from bike_rental.defs.assets.sources import (
 from bike_rental.defs.constants import SELECTED_FEATURE_COLUMNS, TARGET_COLUMN
 from bike_rental.defs.io_managers.io_manager import LocalParquetIOManager
 from bike_rental.defs.resources.data_loader import LocalDataLoader
+from bike_rental.defs.resources.mlflow import MlflowResource
 from bike_rental.defs.resources.training_config import TrainingConfigResource
 
 defs = Definitions(
@@ -51,10 +52,15 @@ defs = Definitions(
     resources={
         "parquet_io_manager": LocalParquetIOManager(),
         "data_loader": LocalDataLoader(),
+        # Per-model hyperparameter defaults live in defs/training/factory.py.
         "training_config": TrainingConfigResource(
             feature_columns=SELECTED_FEATURE_COLUMNS,
             target_column=TARGET_COLUMN,
-            model_type="xgboost",
+        ),
+        # Tracking URI must point at a DB-backed store for the registry to work.
+        # e.g. MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+        "mlflow_tracking": MlflowResource(
+            tracking_uri=EnvVar("MLFLOW_TRACKING_URI"),
         ),
     },
 )

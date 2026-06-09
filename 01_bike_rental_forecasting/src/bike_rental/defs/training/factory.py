@@ -3,6 +3,7 @@
 from typing import Any
 
 import numpy as np
+from lightgbm import LGBMRegressor
 from sklearn.base import BaseEstimator
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.dummy import DummyRegressor
@@ -28,6 +29,8 @@ def _base_estimator(
     """
     if model_type == "xgboost":
         return XGBRegressor(random_state=random_state, **params)
+    if model_type == "lightgbm":
+        return LGBMRegressor(random_state=random_state, **params)
     if model_type == "random_forest":
         return RandomForestRegressor(random_state=random_state, **params)
     if model_type == "linear_regression":

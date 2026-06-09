@@ -36,3 +36,7 @@ templates/
 quarantine/
 
 processed/
+
+.tmp*/
+mlflow.db
+mlartifacts/
