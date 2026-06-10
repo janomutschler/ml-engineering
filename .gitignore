@@ -40,3 +40,4 @@ processed/
 .tmp*/
 mlflow.db
 mlartifacts/
+.env
