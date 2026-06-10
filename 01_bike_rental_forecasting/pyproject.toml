@@ -16,11 +16,12 @@ dependencies = [
     "xgboost>=3.2.0",
     "mlflow>=3.13.0",
     "fastapi>=0.136.3",
-    "uvicorn>=0.48.0",
+    "uvicorn[standard]>=0.48.0",
     "lakefs-spec>=0.14.0",
     "pyarrow>=24.0.0",
     "lightgbm>=4.6.0",
     "lakefs>=0.16.0",
+    "requests>=2.34.2",
 ]
 
 [dependency-groups]
