@@ -1,6 +1,7 @@
 """LakeFS resource for versioning the pipeline's data assets."""
 
 import lakefs
+import lakefs.exceptions
 from dagster import ConfigurableResource
 from lakefs.client import Client
 
@@ -18,6 +19,10 @@ class LakeFSResource(ConfigurableResource):
     access_key: str
     secret_key: str
     repository: str = "bike-rental"
+
+    def run_branch(self, run_id: str) -> str:
+        """Return the per-run branch name for a Dagster run."""
+        return f"dagster-{run_id}"
 
     def _client(self) -> Client:
         return Client(host=self.host, username=self.access_key, password=self.secret_key)
@@ -45,9 +50,18 @@ class LakeFSResource(ConfigurableResource):
         return target.get_commit().id
 
     def merge(self, source: str, destination: str = "main") -> None:
-        """Merge ``source`` branch into ``destination``."""
-        repo = self._repo()
-        repo.branch(source).merge_into(destination)
+        """Merge ``source`` branch into ``destination``.
+
+        A 400 'no changes' response is treated as success — it means the
+        branch is already identical to the destination, which is fine on
+        re-runs where the data hasn't changed.
+        """
+        try:
+            self._repo().branch(source).merge_into(destination)
+        except lakefs.exceptions.BadRequestException as exc:
+            if "no changes" in str(exc).lower():
+                return
+            raise
 
     def object_uri(self, branch: str, path: str) -> str:
         """Build a ``lakefs://`` URI for an object on a branch."""

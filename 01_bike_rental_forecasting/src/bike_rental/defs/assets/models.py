@@ -19,6 +19,7 @@ _METRICS = ("mae", "rmse", "rmsle", "r2")
 def trained_forecasting_model(
     context: AssetExecutionContext,
     modeling_feature_set: pd.DataFrame,
+    data_version: str,
     training_config: TrainingConfigResource,
     mlflow_tracking: MlflowResource,
 ) -> str:
@@ -41,6 +42,8 @@ def trained_forecasting_model(
         Dagster execution context.
     modeling_feature_set : pd.DataFrame
         Modeling-ready dataset containing engineered forecasting features.
+    data_version : str
+        LakeFS commit id of the data this run trains on (logged for lineage).
     training_config : TrainingConfigResource
         Shared training configuration (model selection and backtest settings).
     mlflow_tracking : MlflowResource
@@ -55,7 +58,7 @@ def trained_forecasting_model(
     feature_columns = training_config.feature_columns
     target_column = training_config.target_column
 
-    run_tags = {"dagster_run_id": context.run_id}
+    run_tags = {"dagster_run_id": context.run_id, "lakefs_commit": data_version}
     git_commit = get_git_commit()
     if git_commit:
         run_tags["git_commit"] = git_commit
@@ -79,7 +82,9 @@ def trained_forecasting_model(
                 step=int(fold["fold"]),
             )
 
-        aggregates = {f"mean_{metric}": float(fold_metrics[metric].mean()) for metric in _METRICS}
+        aggregates = {
+            f"mean_{metric}": float(fold_metrics[metric].mean()) for metric in _METRICS
+        }
         aggregates.update(
             {f"std_{metric}": float(fold_metrics[metric].std()) for metric in _METRICS}
         )
@@ -121,6 +126,7 @@ def trained_forecasting_model(
     context.add_output_metadata(
         {
             "mlflow_run_id": run_id,
+            "lakefs_commit": data_version,
             "model_uri": model_info.model_uri,
             "registered_model": mlflow_tracking.registered_model_name,
             "registered_version": MetadataValue.text(str(registered_version)),

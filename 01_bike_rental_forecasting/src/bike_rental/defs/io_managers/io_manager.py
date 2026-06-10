@@ -1,86 +1,90 @@
-"""Local Parquet IO manager for persisting pandas DataFrame assets."""
-
-from pathlib import Path
-
+"""LakeFS-backed Parquet IO manager for persisting and versioning DataFrame assets."""
+ 
 import pandas as pd
 from dagster import ConfigurableIOManager, InputContext, OutputContext
-
-
-class LocalParquetIOManager(ConfigurableIOManager):
-    """Persist pandas DataFrame assets as local Parquet files."""
-
-    base_path: str = "data/processed"
-    project_root: str = "."
-
-    @property
-    def resolved_base_path(self) -> Path:
-        """Return the absolute path to the local asset storage directory."""
-        base_path = Path(self.base_path)
-
-        if base_path.is_absolute():
-            return base_path
-
-        return Path(self.project_root).resolve() / base_path
-
-    def _get_path(
-        self,
-        context: OutputContext | InputContext,
-    ) -> Path:
-        """Build the local Parquet path for an asset."""
+ 
+from bike_rental.defs.resources.lakefs import LakeFSResource
+ 
+ 
+class LakeFSParquetIOManager(ConfigurableIOManager):
+    """Persist DataFrame assets as Parquet on a per-run LakeFS branch.
+ 
+    Owns its own LakeFS connection rather than injecting it as a resource
+    dependency, which avoids Dagster's nested-resource injection quirks for
+    IO managers.
+    """
+ 
+    host: str
+    access_key: str
+    secret_key: str
+    repository: str = "bike-rental"
+    prefix: str = "processed"
+ 
+    def _lakefs(self) -> LakeFSResource:
+        """Build a LakeFSResource from this IO manager's connection fields."""
+        return LakeFSResource(
+            host=self.host,
+            access_key=self.access_key,
+            secret_key=self.secret_key,
+            repository=self.repository,
+        )
+ 
+    def _object_path(self, context: OutputContext | InputContext) -> str:
         asset_name = context.asset_key.path[-1]
-        return self.resolved_base_path / f"{asset_name}.parquet"
-
-    def handle_output(
-        self,
-        context: OutputContext,
-        obj: pd.DataFrame,
-    ) -> None:
-        """Persist a DataFrame asset to a local Parquet file."""
-        path = self._get_path(context)
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        obj.to_parquet(path, index=False)
-
+        return f"{self.prefix}/{asset_name}.parquet"
+ 
+    def handle_output(self, context: OutputContext, obj: pd.DataFrame) -> None:
+        """Write a DataFrame asset as Parquet to the run branch."""
+        lfs = self._lakefs()
+        run_id = context.step_context.run_id
+        branch = lfs.run_branch(run_id)
+        lfs.ensure_branch(branch)
+ 
+        uri = lfs.object_uri(branch, self._object_path(context))
+        obj.to_parquet(uri, index=False, storage_options=lfs.storage_options())
+ 
         context.log.info(
-            "Wrote asset '%s' with %s rows and %s columns to %s",
+            "Wrote asset '%s' (%s rows, %s columns) to %s",
             context.asset_key.to_user_string(),
             len(obj),
             len(obj.columns),
-            path,
+            uri,
         )
-
         context.add_output_metadata(
             {
-                "output_path": str(path),
+                "lakefs_uri": uri,
                 "rows": len(obj),
                 "columns": len(obj.columns),
-                "storage_format": "parquet",
             }
         )
-
-    def load_input(
-        self,
-        context: InputContext,
-    ) -> pd.DataFrame:
-        """Load a persisted local Parquet asset as a DataFrame."""
-        path = self._get_path(context)
-
+ 
+    def load_input(self, context: InputContext) -> pd.DataFrame:
+        """Load a Parquet asset from the run branch, or main outside a run.
+ 
+        The run branch is created from ``main`` on demand. Branch creation in
+        LakeFS is zero-copy, so a fresh branch is an instant snapshot of the
+        last published data. Within a run this means reads see anything written
+        earlier in the same run plus the published version of everything else;
+        in a partial rematerialization the branch is pure snapshot-of-main, so
+        training alone always reads the last published data.
+        """
+        lfs = self._lakefs()
+ 
+        try:
+            run_id = context.step_context.run_id
+        except Exception:
+            run_id = None
+ 
+        if run_id:
+            branch = lfs.run_branch(run_id)
+            lfs.ensure_branch(branch)
+        else:
+            branch = "main"
+ 
+        uri = lfs.object_uri(branch, self._object_path(context))
         context.log.info(
             "Loading upstream asset '%s' from %s",
             context.asset_key.to_user_string(),
-            path,
+            uri,
         )
-
-        df = pd.read_parquet(path)
-
-        if df.empty:
-            raise ValueError(f"Loaded empty DataFrame from {path}")
-
-        context.log.info(
-            "Loaded upstream asset '%s' with %s rows and %s columns",
-            context.asset_key.to_user_string(),
-            len(df),
-            len(df.columns),
-        )
-
-        return df
+        return pd.read_parquet(uri, storage_options=lfs.storage_options())
