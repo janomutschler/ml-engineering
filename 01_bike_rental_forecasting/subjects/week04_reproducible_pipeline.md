@@ -1,4 +1,4 @@
-W# Week 4 - Reproducible pipelines
+# Week 4 - Reproducible pipelines
 
 ## Summary
 
