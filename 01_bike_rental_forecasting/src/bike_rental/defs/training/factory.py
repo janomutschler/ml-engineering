@@ -13,7 +13,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor
 
-SUPPORTED_MODELS = ("xgboost", "random_forest", "linear_regression", "dummy_mean")
+SUPPORTED_MODELS = ("xgboost", "lightgbm", "random_forest", "linear_regression", "dummy_mean")
 
 
 def _base_estimator(

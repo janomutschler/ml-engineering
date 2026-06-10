@@ -2,13 +2,11 @@
 
 from typing import Any
 
-import pandas as pd
 from dagster import Config, ConfigurableResource
 from pydantic import Field
 from sklearn.base import BaseEstimator
 
 from bike_rental.defs.training.factory import build_model
-from bike_rental.defs.training.splitting import TrainTestSplit, chronological_split
 
 
 class XGBoostParams(Config):
@@ -59,39 +57,31 @@ class TrainingConfigResource(ConfigurableResource):
 
     """
 
-    # Split definition (shared by training and evaluation).
+    # Data definition (shared by backtest and final training).
     feature_columns: list[str]
     target_column: str
     time_column: str = "datetime_hour"
-    train_ratio: float = 0.8
+
+    # Evaluation.
+    n_splits: int = 5
 
     # Model selection.
     model_type: str = "xgboost"
     xgboost: XGBoostParams = Field(default_factory=XGBoostParams)
+    lightgbm: LightGBMParams = Field(default_factory=LightGBMParams)
     random_forest: RandomForestParams = Field(default_factory=RandomForestParams)
     linear_regression: LinearRegressionParams = Field(default_factory=LinearRegressionParams)
-    lightgbm: LightGBMParams = Field(default_factory=LightGBMParams)
 
     random_state: int = 42
     log_target: bool = False
-
-    def split(self, modeling_feature_set: pd.DataFrame) -> TrainTestSplit:
-        """Derive the chronological train/test split for a modeling feature set."""
-        return chronological_split(
-            modeling_feature_set,
-            feature_columns=self.feature_columns,
-            target_column=self.target_column,
-            time_column=self.time_column,
-            train_ratio=self.train_ratio,
-        )
 
     def active_params(self) -> dict[str, Any]:
         """Return the hyperparameter block matching ``model_type``."""
         blocks = {
             "xgboost": self.xgboost,
+            "lightgbm": self.lightgbm,
             "random_forest": self.random_forest,
             "linear_regression": self.linear_regression,
-            "lightgbm": self.lightgbm,
             "dummy_mean": None,
         }
         if self.model_type not in blocks:
@@ -114,7 +104,7 @@ class TrainingConfigResource(ConfigurableResource):
         params: dict[str, Any] = {
             "model_type": self.model_type,
             "log_target": self.log_target,
-            "train_ratio": self.train_ratio,
+            "n_splits": self.n_splits,
             "random_state": self.random_state,
             "feature_count": len(self.feature_columns),
             "target_column": self.target_column,

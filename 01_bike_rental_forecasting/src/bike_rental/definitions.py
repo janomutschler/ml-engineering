@@ -9,6 +9,7 @@ from bike_rental.defs.asset_checks.asset_checks import (
     hourly_rental_activity_has_continuous_hours,
     weather_schema,
 )
+from bike_rental.defs.assets.data_version import data_version
 from bike_rental.defs.assets.models import trained_forecasting_model
 from bike_rental.defs.assets.preprocessing import (
     bike_rental_features,
@@ -17,6 +18,7 @@ from bike_rental.defs.assets.preprocessing import (
     modeling_feature_set,
     weather_cleaned,
 )
+from bike_rental.defs.assets.promotion import model_promotion
 from bike_rental.defs.assets.sources import (
     booked_rentals,
     direct_pickups,
@@ -24,8 +26,9 @@ from bike_rental.defs.assets.sources import (
     weather,
 )
 from bike_rental.defs.constants import SELECTED_FEATURE_COLUMNS, TARGET_COLUMN
-from bike_rental.defs.io_managers.io_manager import LocalParquetIOManager
+from bike_rental.defs.io_managers.io_manager import LakeFSParquetIOManager
 from bike_rental.defs.resources.data_loader import LocalDataLoader
+from bike_rental.defs.resources.lakefs import LakeFSResource
 from bike_rental.defs.resources.mlflow import MlflowResource
 from bike_rental.defs.resources.training_config import TrainingConfigResource
 
@@ -41,6 +44,8 @@ defs = Definitions(
         bike_rental_features,
         modeling_feature_set,
         trained_forecasting_model,
+        model_promotion,
+        data_version,
     ],
     asset_checks=[
         booked_rentals_schema,
@@ -50,7 +55,11 @@ defs = Definitions(
         hourly_rental_activity_has_continuous_hours,
     ],
     resources={
-        "parquet_io_manager": LocalParquetIOManager(),
+        "parquet_io_manager": LakeFSParquetIOManager(
+            host=EnvVar("LAKEFS_HOST"),
+            access_key=EnvVar("LAKEFS_ACCESS_KEY"),
+            secret_key=EnvVar("LAKEFS_SECRET_KEY"),
+        ),
         "data_loader": LocalDataLoader(),
         # Per-model hyperparameter defaults live in defs/training/factory.py.
         "training_config": TrainingConfigResource(
@@ -61,6 +70,11 @@ defs = Definitions(
         # e.g. MLFLOW_TRACKING_URI=http://127.0.0.1:5000
         "mlflow_tracking": MlflowResource(
             tracking_uri=EnvVar("MLFLOW_TRACKING_URI"),
+        ),
+        "lakefs": LakeFSResource(
+            host=EnvVar("LAKEFS_HOST"),
+            access_key=EnvVar("LAKEFS_ACCESS_KEY"),
+            secret_key=EnvVar("LAKEFS_SECRET_KEY"),
         ),
     },
 )
