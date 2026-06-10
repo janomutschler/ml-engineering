@@ -4,6 +4,12 @@ End-to-end machine learning engineering project focused on preparing and forecas
 
 This project is part of the appliedAI ML & MLOps track and evolves over multiple weeks from exploratory data analysis and preprocessing to model training, workflow orchestration, and MLOps workflows.
 
+## Problem
+
+A city-wide bike sharing company needs to plan how many bikes to allocate across the city each day. The bike distribution department makes this decision one day in advance, so they need a **day-ahead forecast of hourly rental demand** for the upcoming day.
+
+This project builds that forecast as a reproducible, production-style ML system: it ingests historical rental, weather, and holiday data, engineers temporal and demand-history features, trains and evaluates forecasting models, and serves a **next-day hourly demand prediction** through an HTTP API. The scope is deliberately the next day only — the prediction horizon is the 24 hours immediately following the most recent observed data, which is what the distribution department's planning cycle requires.
+
 ## Quick Start
 
 ### Prerequisites
@@ -46,7 +52,7 @@ make infra        # starts LakeFS in Docker (background)
 make lakefs-repo  # create the repository (run once)
 ```
 
-LakeFS UI available at `http://127.0.0.1:8000`.
+LakeFS UI available at `http://localhost:8000`.
 
 **Step 2 — MLflow tracking server (separate terminal):**
 
@@ -63,6 +69,18 @@ make dev
 ```
 
 Dagster UI available at `http://127.0.0.1:3000`. Materialize assets from the asset graph to run the pipeline end to end.
+
+**Step 4 — Prediction API (separate terminal, after a model is promoted):**
+
+```bash
+make api
+```
+
+The forecast API is available at `http://127.0.0.1:8001`, with interactive docs at `http://127.0.0.1:8001/docs`. It loads the `@champion` model from the MLflow registry, so the pipeline must have run and promoted a model at least once. Example request:
+
+```bash
+uv run python scripts/example_request.py
+```
 
 ### Other commands
 
@@ -158,11 +176,18 @@ Production-readiness improvements applied after Week 3:
 * partial re-runs (e.g. retrain only) read the last published snapshot from `main` via a fresh branch, with no upstream re-runs required
 * every MLflow training run is tagged with `lakefs_commit`, completing the lineage chain: registered model → MLflow run → git commit + LakeFS data commit → exact Parquet snapshot
 
+### Phase 5 — Prediction API ✅
+
+* FastAPI service exposes a day-ahead demand forecast: 24 hourly predictions for the period immediately following the last published data point
+* the `@champion` model is loaded from the MLflow registry by alias — deploying a new model is an alias move plus a `/reload`, never a code change or redeploy
+* features for the forecast horizon are computed server-side by reusing the *exact* pipeline transform functions, eliminating training-serving skew; backward-looking lag features are derived from history published to LakeFS `main`
+* request validation via Pydantic (24 hours required, known conditions only, range-checked weather); feature columns read from the model's logged signature
+* `/health` and every forecast response carry the served `model_version` and `data_commit`, surfacing the full lineage chain at the serving layer
+
 ## Planned Future Work
 
-* batch inference and prediction asset
+* file-arrival sensor for automated retraining on new data
 * input drift and performance decay monitoring
-* daily schedule and file-arrival sensor
 * deployment-oriented MLOps workflows
 
 ## Project Structure
@@ -181,6 +206,7 @@ Production-readiness improvements applied after Week 3:
 │   └── bootstrap_lakefs.py   # idempotent repo creation
 ├── src/
 │   └── bike_rental/
+│       ├── api/             # FastAPI prediction service
 │       └── defs/
 │           ├── assets/          # Dagster asset definitions
 │           ├── asset_checks/    # schema and data quality checks
@@ -207,6 +233,7 @@ Production-readiness improvements applied after Week 3:
 * Dagster
 * MLflow
 * LakeFS
+* FastAPI
 * Docker
 * Jupyter Notebooks
 * Ruff
@@ -225,6 +252,7 @@ Production-readiness improvements applied after Week 3:
 * champion/challenger model promotion
 * data versioning and branching
 * end-to-end ML lineage
+* model serving and inference APIs
 * reproducibility
 * MLOps foundations
 
