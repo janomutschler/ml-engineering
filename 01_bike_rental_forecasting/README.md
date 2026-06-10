@@ -12,6 +12,12 @@ This project is part of the appliedAI ML & MLOps track and evolves over multiple
 - [uv](https://docs.astral.sh/uv/)
 - make
 - git
+- Docker (for LakeFS)
+
+**macOS only** — XGBoost and LightGBM require `libomp` from Homebrew:
+```bash
+brew install libomp
+```
 
 ### Install
 
@@ -19,37 +25,52 @@ This project is part of the appliedAI ML & MLOps track and evolves over multiple
 make install
 ```
 
-**macOS only** — XGBoost requires `libomp` from Homebrew:
+### Configure
+
+Copy the environment template and fill in your values:
+
 ```bash
-brew install libomp
+cp .env.example .env
 ```
+
+The defaults in `.env.example` match the local dev setup out of the box — no changes needed unless you're pointing at a remote server.
 
 ### Run
 
-The project requires two services running in parallel: an MLflow tracking server and the Dagster development server.
+The project requires three services. Start them in order:
 
-**Terminal 1 — MLflow tracking server:**
+**Step 1 — LakeFS (data versioning):**
+
+```bash
+make infra        # starts LakeFS in Docker (background)
+make lakefs-repo  # create the repository (run once)
+```
+
+LakeFS UI available at `http://127.0.0.1:8000`.
+
+**Step 2 — MLflow tracking server (separate terminal):**
 
 ```bash
 make mlflow
 ```
 
-This starts the MLflow server at `http://127.0.0.1:5000` backed by a local SQLite database. The model registry requires a database-backed store; leave this running for the duration of your session.
+MLflow UI available at `http://127.0.0.1:5000`.
 
-**Terminal 2 — Dagster development server:**
+**Step 3 — Dagster development server (separate terminal):**
 
 ```bash
 make dev
 ```
 
-This starts the Dagster UI at `http://127.0.0.1:3000` with `MLFLOW_TRACKING_URI` pre-configured. Materialize assets from the asset graph to run the pipeline end to end.
+Dagster UI available at `http://127.0.0.1:3000`. Materialize assets from the asset graph to run the pipeline end to end.
 
 ### Other commands
 
 ```bash
-make test      # run the test suite
-make lint      # check code style and formatting
-make format    # auto-fix formatting and linting
+make infra-down   # stop LakeFS
+make test         # run the test suite
+make lint         # check code style and formatting
+make format       # auto-fix formatting and linting
 ```
 
 ## Project Goals
@@ -61,7 +82,7 @@ The project aims to:
 * engineer useful temporal and contextual features
 * train forecasting models for bike rental demand
 * integrate ML workflows into structured pipelines
-* apply MLOps practices such as experiment tracking, model versioning, and deployment
+* apply MLOps practices such as experiment tracking, model versioning, data versioning, and deployment
 
 ## Current Scope
 
@@ -107,18 +128,38 @@ Production-readiness improvements applied after Week 3:
 
 ### Phase 1 — MLflow Integration ✅
 
-* every training run logged to MLflow with params, four hold-out metrics, model signature, input example, and provenance tags (Dagster run ID, git commit)
+* every training run logged to MLflow with params, metrics (MAE, RMSE, RMSLE, R²), model signature, input example, and provenance tags (Dagster run ID, git commit)
 * trained model registered as a versioned artifact in the MLflow model registry (`bike_rental_forecaster`)
 * `MlflowResource` owns the connection and run lifecycle; assets decide what to log
 * tracking URI injected via `MLFLOW_TRACKING_URI` environment variable (fail-loud, no silent fallback)
-* `mlflow.sklearn.log_model` used uniformly across all model types (XGBoost, LightGBM, Random Forest, and Linear Regression all expose the sklearn API)
+* `mlflow.sklearn.log_model` used uniformly across all model types via the sklearn-compatible API
+
+### Phase 2 — Walk-forward Backtesting ✅
+
+* single holdout evaluation replaced with 5-fold expanding-window walk-forward cross-validation via `TimeSeriesSplit`
+* backtest and final training unified in one MLflow run: cross-validation first (honest performance estimate), then fit on all data (the registered artifact)
+* per-fold metrics logged step-indexed to MLflow (trajectory chart); `mean_*` and `std_*` aggregates as run-level summary
+* `std_r2` exposes model stability across time — not possible with a single holdout
+* fold 1 cold-start behaviour documented: steady-state performance (folds 2–5) is ~0.90 ± 0.025; full mean including fold 1 is ~0.852
+
+### Phase 3 — Champion/Challenger Promotion Gate ✅
+
+* `model_promotion` asset compares the newly registered version against the current `@champion` on `mean_r2`
+* first run bootstraps the champion automatically; subsequent runs promote only on strict improvement
+* `@challenger` alias assigned to versions that don't beat the champion
+* promotion policy (`metric`, `higher_is_better`, `min_improvement`) is a per-run `PromotionConfig` overridable from the launchpad
+* production and inference always load `models:/bike_rental_forecaster@champion` — no hardcoded version numbers
+
+### Phase 4 — LakeFS Data Versioning and Full Lineage ✅
+
+* LakeFS runs locally via Docker, backed by named volumes; production swap to S3/GCS requires only a storage namespace config change
+* `LakeFSParquetIOManager` writes all DataFrame assets to a per-run branch (`dagster-<run_id>`), created as a zero-copy snapshot of `main`
+* `data_version` asset commits the run branch and merges to `main` after all data assets materialise — nothing reaches `main` unless the full run completes
+* partial re-runs (e.g. retrain only) read the last published snapshot from `main` via a fresh branch, with no upstream re-runs required
+* every MLflow training run is tagged with `lakefs_commit`, completing the lineage chain: registered model → MLflow run → git commit + LakeFS data commit → exact Parquet snapshot
 
 ## Planned Future Work
 
-* walk-forward backtesting harness replacing the single holdout split
-* champion/challenger promotion gate using MLflow model aliases
-* data versioning with LakeFS
-* end-to-end lineage: data commit → features → model → metrics
 * batch inference and prediction asset
 * input drift and performance decay monitoring
 * daily schedule and file-arrival sensor
@@ -130,25 +171,29 @@ Production-readiness improvements applied after Week 3:
 .
 ├── data/
 │   ├── sources/         # raw input CSVs (not tracked by git)
-│   ├── processed/       # materialized Dagster assets
+│   ├── processed/       # local fallback for non-LakeFS assets
 │   └── quarantine/
 ├── mlartifacts/         # MLflow artifact store
 ├── mlflow.db            # MLflow tracking database (SQLite)
 ├── notebooks/
 ├── reports/
+├── scripts/
+│   └── bootstrap_lakefs.py   # idempotent repo creation
 ├── src/
 │   └── bike_rental/
 │       └── defs/
 │           ├── assets/          # Dagster asset definitions
 │           ├── asset_checks/    # schema and data quality checks
-│           ├── io_managers/     # Parquet IO manager
+│           ├── io_managers/     # LakeFS-backed Parquet IO manager
 │           ├── preprocessing/   # pure transformation functions
-│           ├── resources/       # data loader, MLflow, training config
-│           ├── training/        # model factory, metrics, splitting
+│           ├── resources/       # data loader, MLflow, LakeFS, training config
+│           ├── training/        # model factory, metrics, backtesting
 │           └── utils/           # metadata and git helpers
 ├── subjects/
 ├── tests/
+├── docker-compose.yml
 ├── Makefile
+├── .env.example
 └── pyproject.toml
 ```
 
@@ -161,6 +206,8 @@ Production-readiness improvements applied after Week 3:
 * LightGBM
 * Dagster
 * MLflow
+* LakeFS
+* Docker
 * Jupyter Notebooks
 * Ruff
 * Pytest
@@ -174,7 +221,10 @@ Production-readiness improvements applied after Week 3:
 * workflow orchestration
 * config-driven ML pipelines
 * experiment tracking and model registry
-* forecasting systems
+* walk-forward backtesting
+* champion/challenger model promotion
+* data versioning and branching
+* end-to-end ML lineage
 * reproducibility
 * MLOps foundations
 
