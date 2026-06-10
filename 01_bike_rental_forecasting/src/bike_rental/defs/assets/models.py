@@ -82,9 +82,7 @@ def trained_forecasting_model(
                 step=int(fold["fold"]),
             )
 
-        aggregates = {
-            f"mean_{metric}": float(fold_metrics[metric].mean()) for metric in _METRICS
-        }
+        aggregates = {f"mean_{metric}": float(fold_metrics[metric].mean()) for metric in _METRICS}
         aggregates.update(
             {f"std_{metric}": float(fold_metrics[metric].std()) for metric in _METRICS}
         )

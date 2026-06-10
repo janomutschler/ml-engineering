@@ -71,7 +71,7 @@ defs = Definitions(
         "mlflow_tracking": MlflowResource(
             tracking_uri=EnvVar("MLFLOW_TRACKING_URI"),
         ),
-		"lakefs": LakeFSResource(
+        "lakefs": LakeFSResource(
             host=EnvVar("LAKEFS_HOST"),
             access_key=EnvVar("LAKEFS_ACCESS_KEY"),
             secret_key=EnvVar("LAKEFS_SECRET_KEY"),
