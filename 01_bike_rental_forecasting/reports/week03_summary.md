@@ -1,193 +1,72 @@
-# Week 3 Rental Predictions
+# Week 3 — Exploratory Analysis and Forecasting Models
 
-## Summary
+> **Milestone:** understand the demand data, build a baseline, then iterate with feature engineering and stronger models — and fold the winning recipe back into the pipeline.
 
-Week 3 extends the bike rental project from data preparation into machine learning and demand forecasting.
+## Objective
 
-The assignment focused on four major stages:
+With a clean hourly dataset in hand, this week shifts from data preparation to *learning from the data*. The aim is to predict a continuous target — hourly rental demand — which calls for regression models and time-aware evaluation. The work runs in three movements: explore, model, and integrate.
 
-* Exploratory Data Analysis
-* Baseline Regression Modeling
-* Feature Engineering and Model Development
-* Pipeline Integration
+## Exploratory data analysis
 
-During this phase, the prepared dataset was validated, explored, and used to develop and evaluate multiple forecasting models. A structured experimentation workflow was implemented to compare baseline models, feature engineering techniques, and machine learning algorithms.
+The EDA focused on what drives demand and which predictors look promising. Key patterns:
 
-The work resulted in a high-performing forecasting model capable of explaining more than 90% of the observed variability in bike rental demand. In addition, the experiments provided valuable insights into the factors that drive rental activity and the relative importance of different feature engineering approaches.
+- **Strong daily cycles** with pronounced morning/evening rush-hour peaks.
+- **Stable weekly patterns** — weekdays and weekends behave distinctly and consistently.
+- **Seasonal and long-term trends** across months.
+- **Reduced demand on holidays.**
+- **Weather relationships** — demand responds to conditions, temperature, and rain.
 
----
+The headline takeaway: demand is *highly structured in time*, which strongly suggested that **historical demand itself** would be the most valuable predictor.
 
-## Dataset Validation and Data Quality
+## Baseline
 
-The final dataset was validated after integrating rental, weather, temporal, and holiday information through the preprocessing pipeline.
+Two references were established before any tuning:
 
-Several data quality checks were performed, including:
+| Model | MAE | RMSE | R² |
+|-------|-----|------|----|
+| Dummy Regressor (predicts the mean) | 174.98 | 232.61 | −0.11 |
+| Linear Regression (raw features) | 134.30 | 199.58 | 0.18 |
 
-* Duplicate record validation
-* Missing value analysis
-* Suspicious value detection
-* Temporal continuity checks
-* Feature consistency verification
+Linear Regression beating the naive baseline confirmed the weather and calendar features carried real signal — a starting point to improve on, not a finish line.
 
-The analysis confirmed that the dataset contains no duplicate records or missing values. A small number of missing hourly timestamps were identified due to periods without available source data, but these gaps represent only a minor fraction of the overall observation period.
+## Feature engineering experiments
 
-Additional validation confirmed that rental counts, temporal features, and categorical variables were internally consistent and suitable for forecasting applications.
+A series of time-boxed experiments, each justified by its effect:
 
----
+- **Cyclical time encodings.** Hour and month encoded as sine/cosine pairs so the model sees that hour 23 is adjacent to hour 0. R² rose from **0.18 → 0.26**.
+- **Historical-demand features** (the big lever):
+  - Daily and weekly lags (`lag_24h`, `lag_168h`)
+  - Same-hour rolling average over recent days
+  - Same-weekday-hour rolling average over recent weeks
 
-## Exploratory Data Analysis
+  Context-aware aggregations clearly beat generic rolling averages. The single strongest feature was the **same-weekday-hour historical average** — it captures "what demand usually looks like at this hour on this kind of day."
 
-The exploratory analysis focused on understanding demand behavior and identifying promising predictor variables.
+With the selected feature set, Linear Regression jumped to **R² ≈ 0.86**, evidence that most of the gain came from features rather than model complexity.
 
-Key findings included:
+## Model comparison
 
-* Strong daily demand cycles with pronounced rush-hour peaks
-* Consistent weekly demand patterns
-* Long-term growth trends throughout the observation period
-* Seasonal fluctuations across different months
-* Reduced demand during holidays
-* Meaningful relationships between weather conditions and rental activity
+Three models on the selected feature set, chronological holdout:
 
-The analysis revealed that bike rental demand exhibits highly structured temporal behavior, suggesting that historical demand information would likely play an important role in future forecasting models.
+| Model | MAE | RMSE | R² |
+|-------|-----|------|----|
+| Linear Regression | 50.74 | 82.74 | 0.86 |
+| Random Forest | 44.92 | 72.28 | 0.89 |
+| **XGBoost** | **40.17** | **62.88** | **0.92** |
 
----
+**XGBoost** won, explaining ~92% of demand variability. Feature-importance analysis on the tree models confirmed the EDA intuition: historical-demand features dominate, weekly and daily lags are highly influential, and weather is useful but secondary.
 
-## Baseline Modeling
+## Leakage-awareness
 
-Two baseline models were evaluated:
+Because the strongest features are historical, care was taken to keep them **causal**: every lag and rolling aggregate looks strictly backward (shifted so the current row never sees its own target). This is what later made it safe to compute features once over the full series and evaluate by time-ordered splits — a row at time *t* only depends on data up to *t*.
 
-* Dummy Regressor
-* Linear Regression
+## Pipeline integration
 
-The Dummy Regressor predicts the average rental demand for all observations and serves as a naive benchmark.
+The winning recipe was integrated into the Dagster pipeline so feature generation, training, and evaluation became reproducible assets rather than notebook cells — extending the Week 2 graph with a modeling stage that materializes end to end.
 
-| Model                        | MAE    | RMSE   | R²    |
-| ---------------------------- | ------ | ------ | ----- |
-| Dummy Regressor              | 174.98 | 232.61 | -0.11 |
-| Linear Regression (Baseline) | 134.30 | 199.58 | 0.18  |
+## What I learned
 
-The Linear Regression model substantially outperformed the naive baseline, demonstrating that the available weather and temporal features contain meaningful predictive information.
+The value of establishing a baseline before optimizing; how to run disciplined, hypothesis-driven feature-engineering experiments and quantify each one; why time-series problems need causal features and time-aware validation; and how to read feature importance to confirm (or challenge) what the EDA suggested. The biggest lesson: **feature engineering outperformed model selection** here.
 
----
+## How this evolved later
 
-## Feature Engineering Experiments
-
-A series of feature engineering experiments were conducted to improve forecasting performance.
-
-### Cyclical Temporal Features
-
-Hour and month variables were transformed using sine and cosine encodings to better represent cyclical temporal patterns.
-
-This increased the model R² score from 0.18 to 0.26.
-
-### Historical Demand Features
-
-Historical demand features produced the largest performance gains.
-
-Implemented features included:
-
-* Daily lag (`lag_24h`)
-* Weekly lag (`lag_168h`)
-* Generic rolling averages
-* Same-hour historical averages
-* Same weekday-hour historical averages
-
-The experiments demonstrated that context-aware historical demand features significantly outperform generic rolling statistics.
-
-The strongest individual feature was the same weekday-hour historical average, which captures recurring demand behavior observed during similar temporal conditions.
-
-### Feature Selection
-
-Based on the experiment results, a final feature set was selected consisting of:
-
-* Weather features
-* Cyclical temporal features
-* Daily and weekly lag features
-* Same-hour historical averages
-* Same weekday-hour historical averages
-
-Generic rolling averages were excluded because they provided only marginal performance improvements compared to the more targeted historical aggregation features.
-
-Using the selected feature set, Linear Regression achieved an R² score of approximately 0.86.
-
----
-
-## Model Evaluation
-
-Three forecasting algorithms were evaluated using the selected feature set:
-
-| Model                                 | MAE   | RMSE  | R²   |
-| ------------------------------------- | ----- | ----- | ---- |
-| Linear Regression (Selected Features) | 50.74 | 82.74 | 0.86 |
-| Random Forest                         | 44.92 | 72.28 | 0.89 |
-| XGBoost                               | 40.17 | 62.88 | 0.92 |
-
-XGBoost achieved the strongest overall performance, explaining more than 91% of the observed variability in bike rental demand.
-
-The comparison also showed that feature engineering contributed substantially more to model performance than model complexity alone.
-
----
-
-## Feature Importance Analysis
-
-Feature importance analysis was performed using the tree-based models.
-
-The results showed that historical demand features dominate the predictive signal.
-
-In particular:
-
-* Same weekday-hour historical averages were the most important predictor
-* Weekly lag features were highly influential
-* Daily lag features contributed substantial predictive value
-* Weather variables provided useful but secondary information
-
-These findings confirm the conclusions from the exploratory analysis and feature engineering experiments.
-
----
-
-## Pipeline Integration
-
-The forecasting workflow was integrated into the existing Dagster pipeline to enable reproducible feature generation, model training, and model evaluation.
-
-Implemented assets include:
-
-* Modeling feature set generation
-* Cyclical temporal feature creation
-* Historical demand feature generation
-* Chronological train-test splitting
-* XGBoost model training
-* Automated model evaluation
-
-The resulting asset graph extends the Week 2 preprocessing pipeline with a complete machine learning workflow, allowing the forecasting process to be materialized end-to-end through Dagster.
-
----
-
-## Key Findings
-
-Several important conclusions emerged from the forecasting workflow:
-
-* Historical demand is the strongest predictor of future rental activity.
-* Context-aware historical aggregations outperform generic rolling statistics.
-* Weekly and daily demand patterns are highly stable and predictable.
-* Weather contributes useful information but is less influential than temporal demand behavior.
-* Feature engineering provides larger performance gains than model selection alone.
-* XGBoost achieved the strongest forecasting performance among all evaluated models.
-* The final forecasting workflow was successfully integrated into Dagster and can be executed as a reproducible asset pipeline.
-
----
-
-## Next Steps
-
-The results of Week 3 establish a strong forecasting foundation for the remainder of the project.
-
-Future work will focus on:
-
-* Experiment tracking with MLflow
-* Model versioning and management
-* Automated retraining workflows
-* Workflow orchestration improvements
-* Inference and prediction workflows
-* Monitoring and maintaining forecasting performance over time
-* Deployment-oriented MLOps workflows
-
-The selected feature set and XGBoost model provide a strong candidate for future production-oriented forecasting and MLOps workflows.
+The Week 3 integration used a single chronological train/test split and a separate evaluation step. In the MLOps phase this was replaced by **walk-forward backtesting** (expanding-window cross-validation), which reports performance as a distribution over time and exposes stability (`std_r2`) that a single split cannot. Model selection also became **config-driven** — XGBoost, LightGBM, Random Forest, Linear Regression, and Dummy behind one typed configuration — but the selected feature set and the conclusion that XGBoost is the strongest candidate carried forward.
