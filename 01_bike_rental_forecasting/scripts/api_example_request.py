@@ -2,7 +2,7 @@
 
 Usage (with the API running via `make api`):
 
-    uv run python scripts/example_request.py
+    uv run python scripts/api_example_request.py
 
 Doubles as a smoke check: a non-zero, daily-shaped curve means the model,
 feature pipeline, and data reads are all working end to end.
