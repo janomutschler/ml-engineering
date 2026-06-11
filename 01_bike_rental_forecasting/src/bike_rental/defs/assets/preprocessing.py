@@ -3,17 +3,10 @@
 import pandas as pd
 from dagster import AssetExecutionContext, asset
 
-from bike_rental.defs.constants import (
-    BIKE_RENTAL_FEATURE_COLUMNS,
-    TARGET_COLUMN,
-)
+from bike_rental.defs.constants import BIKE_RENTAL_FEATURE_COLUMNS
 from bike_rental.defs.preprocessing.aggregation import aggregate_hourly_rental_activity
+from bike_rental.defs.preprocessing.assembly import assemble_modeling_features
 from bike_rental.defs.preprocessing.calendar_features import create_calendar_features
-from bike_rental.defs.preprocessing.feature_transforms import (
-    add_cyclical_features,
-    add_historical_demand_features,
-    one_hot_encode_column,
-)
 from bike_rental.defs.preprocessing.weather import clean_weather_data
 from bike_rental.defs.utils.metadata import build_dataframe_metadata
 
@@ -218,27 +211,14 @@ def modeling_feature_set(
         Modeling-ready dataset containing engineered forecasting features.
 
     """
-    df = bike_rental_features
+    input_columns = bike_rental_features.shape[1]
 
     context.log.info(
         "Creating modeling feature set from %s input rows.",
-        len(df),
+        len(bike_rental_features),
     )
 
-    df = one_hot_encode_column(
-        df,
-        column="conditions",
-    )
-
-    df = add_cyclical_features(df, column="hour", period=24)
-    df = add_cyclical_features(df, column="month", period=12)
-
-    df = add_historical_demand_features(
-        df,
-        target_column=TARGET_COLUMN,
-        hour_column="hour",
-        weekday_column="weekday",
-    )
+    df = assemble_modeling_features(bike_rental_features)
 
     rows_before_dropna = len(df)
 
@@ -256,7 +236,7 @@ def modeling_feature_set(
             df,
             extra_metadata={
                 "rows_removed": rows_removed,
-                "generated_features": 8,
+                "generated_features": df.shape[1] - input_columns,
             },
         )
     )

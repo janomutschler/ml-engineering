@@ -1,22 +1,40 @@
-"""Utility functions for building metadata about dataframes in the bike rental pipeline."""
+"""Utilities for building Dagster metadata about dataframes in the pipeline."""
 
 import pandas as pd
-from dagster import MetadataValue, Output
+from dagster import MetadataValue
 
 
 def build_dataframe_metadata(
-    data,
+    data: pd.DataFrame | pd.Series,
     preview_rows: int = 5,
     extra_metadata: dict | None = None,
 ) -> dict:
-    """Build Dagster metadata for a dataframe."""
+    """Build standardized Dagster output metadata for a dataframe or series.
+
+    Parameters
+    ----------
+    data : pd.DataFrame | pd.Series
+        The asset payload to summarize.
+    preview_rows : int, default=5
+        Number of leading rows to render as a Markdown preview.
+    extra_metadata : dict | None, default=None
+        Additional key/value metadata merged into the result.
+
+    Returns
+    -------
+    dict
+        Metadata with the row count, per-column dtypes, a Markdown preview, and
+        any ``extra_metadata`` provided.
+
+    """
     if isinstance(data, pd.DataFrame):
         column_types = {column: str(dtype) for column, dtype in data.dtypes.items()}
     else:
         column_types = {data.name or "value": str(data.dtype)}
+
     metadata = {
         "rows": len(data),
-        "columns_types": column_types,
+        "column_types": column_types,
         "preview": MetadataValue.md(data.head(preview_rows).to_markdown()),
     }
 
@@ -24,35 +42,3 @@ def build_dataframe_metadata(
         metadata.update(extra_metadata)
 
     return metadata
-
-
-def build_output(
-    data: pd.DataFrame,
-    output_name: str,
-    extra_metadata: dict | None = None,
-) -> Output:
-    """Create a Dagster Output with standardized dataframe metadata.
-
-    Parameters
-    ----------
-    data : pd.DataFrame
-        Output dataframe.
-    output_name : str
-        Name of the Dagster output.
-    extra_metadata : dict | None, default=None
-        Additional metadata to attach.
-
-    Returns
-    -------
-    Output
-        Dagster output containing the dataframe and metadata.
-
-    """
-    return Output(
-        data,
-        output_name=output_name,
-        metadata=build_dataframe_metadata(
-            data,
-            extra_metadata=extra_metadata,
-        ),
-    )

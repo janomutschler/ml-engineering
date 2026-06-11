@@ -58,4 +58,4 @@ def clean_weather_data(
         "humidity_values_imputed": missing_humidity_count,
     }
 
-    return cleaned_weather.drop(columns="id"), cleaning_metadata
+    return cleaned_weather.drop(columns="id", errors="ignore"), cleaning_metadata

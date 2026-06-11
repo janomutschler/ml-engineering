@@ -8,7 +8,7 @@ from mlflow.models import infer_signature
 
 from bike_rental.defs.resources.mlflow import MlflowResource
 from bike_rental.defs.resources.training_config import TrainingConfigResource
-from bike_rental.defs.training.backtest import walk_forward_backtest
+from bike_rental.defs.training.train import backtest_and_fit
 from bike_rental.defs.utils.git import get_git_commit
 from bike_rental.defs.utils.metadata import build_dataframe_metadata
 
@@ -25,16 +25,12 @@ def trained_forecasting_model(
 ) -> str:
     """Backtest, train, and register the forecasting model in one MLflow run.
 
-    The model build has two stages, recorded together so the registered model
-    version links directly to the evidence that justifies it:
-
-    1. Evaluate the recipe with a walk-forward backtest across ``n_splits``
-       expanding folds. The per-fold and aggregate cross-validation metrics
-       are the honest estimate of how this configuration generalizes
-       over time.
-    2. Produce the artifact by fitting the same configuration on all available
-       data and registering it. The deployed model uses the full history; the
-       backtest, not a held-out slice, is its performance estimate.
+    The ML work — walk-forward backtest plus the final fit on all data — lives
+    in :func:`backtest_and_fit`. This asset wraps that core in a single MLflow
+    run so the registered model version links directly to the evidence that
+    justifies it: the per-fold cross-validation metrics are the honest estimate
+    of how the configuration generalizes, and the deployed artifact is fit on
+    the full history.
 
     Parameters
     ----------
@@ -52,12 +48,10 @@ def trained_forecasting_model(
     Returns
     -------
     str
-        The MLflow model URI of the registered model.
+        The registered model version (as a string). The promotion gate consumes
+        this to compare the new version against the current champion.
 
     """
-    feature_columns = training_config.feature_columns
-    target_column = training_config.target_column
-
     run_tags = {"dagster_run_id": context.run_id, "lakefs_commit": data_version}
     git_commit = get_git_commit()
     if git_commit:
@@ -65,49 +59,30 @@ def trained_forecasting_model(
 
     with mlflow_tracking.run(run_name=training_config.model_type, tags=run_tags) as active_run:
         mlflow.log_params(training_config.mlflow_params())
+        mlflow.log_param("feature_columns", ",".join(training_config.feature_columns))
 
-        # Stage 1: evaluate the recipe with a walk-forward backtest.
-        fold_metrics = walk_forward_backtest(
-            modeling_feature_set,
-            make_model=training_config.build_model,
-            feature_columns=feature_columns,
-            target_column=target_column,
-            time_column=training_config.time_column,
-            n_splits=training_config.n_splits,
-        )
+        result = backtest_and_fit(modeling_feature_set, training_config, _METRICS)
 
-        for _, fold in fold_metrics.iterrows():
+        for _, fold in result.fold_metrics.iterrows():
             mlflow.log_metrics(
                 {metric: float(fold[metric]) for metric in _METRICS},
                 step=int(fold["fold"]),
             )
+        mlflow.log_metrics(result.aggregates)
 
-        aggregates = {f"mean_{metric}": float(fold_metrics[metric].mean()) for metric in _METRICS}
-        aggregates.update(
-            {f"std_{metric}": float(fold_metrics[metric].std()) for metric in _METRICS}
-        )
-        mlflow.log_metrics(aggregates)
-
-        # Stage 2: fit the final model on all data and register it.
-        ordered = modeling_feature_set.sort_values(training_config.time_column)
-        X_all = ordered[feature_columns]
-        y_all = ordered[target_column]
-
-        final_model = training_config.build_model()
-        final_model.fit(X_all, y_all)
-
-        signature = infer_signature(X_all, final_model.predict(X_all))
+        signature = infer_signature(result.X_all, result.model.predict(result.X_all))
         model_info = mlflow.sklearn.log_model(
-            sk_model=final_model,
+            sk_model=result.model,
             name=training_config.model_type,
             signature=signature,
-            input_example=X_all.head(),
+            input_example=result.X_all.head(),
             registered_model_name=mlflow_tracking.registered_model_name,
         )
 
         run_id = active_run.info.run_id
 
     registered_version = getattr(model_info, "registered_model_version", None)
+    aggregates = result.aggregates
 
     context.log.info(
         "Backtested and registered %s (run %s, version %s): "
@@ -134,7 +109,7 @@ def trained_forecasting_model(
             "std_r2": aggregates["std_r2"],
             "mean_mae": aggregates["mean_mae"],
             "mean_rmsle": aggregates["mean_rmsle"],
-            "backtest_folds": build_dataframe_metadata(fold_metrics)["preview"],
+            "backtest_folds": build_dataframe_metadata(result.fold_metrics)["preview"],
         }
     )
 

@@ -42,8 +42,6 @@ class LocalDataLoader(ConfigurableResource):
             Dagster context used for logging and metadata.
         file_name : str
             Name of the CSV file inside the configured base path.
-        datetime_columns : Sequence[str] | None, optional
-            Columns to parse as datetime values.
 
         Returns
         -------
