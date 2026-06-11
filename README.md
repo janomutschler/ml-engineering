@@ -1,186 +1,88 @@
-# ML Engineering
+# Machine Learning Engineering & MLOps
 
-End-to-end machine learning engineering and MLOps workflows built during the
-appliedAI ML & MLOps track.
+A portfolio of machine learning engineering and MLOps projects, progressing from fundamentals to a full production-style ML system. Built during the appliedAI ML & MLOps track — a 6-week, industry-oriented specialization in practical ML engineering, orchestration, reproducibility, and MLOps.
 
-This repository documents the progression through an intensive 6-week
-industry-oriented specialization program focused on practical machine learning
-engineering, workflow orchestration, reproducibility, and MLOps fundamentals.
-The program combines weekly project work, mentor evaluations, and hands-on
-implementation of real-world machine learning systems.
-
-The track is structured around progressively building complete ML workflows —
-from exploratory analysis and preprocessing to model training, orchestration,
-experiment tracking, and deployment-oriented workflows.
+The centerpiece is **01 — Bike Rental Demand Forecasting**, an end-to-end MLOps pipeline. **00** is a from-first-principles fundamentals warm-up; **02** is an upcoming team industry challenge.
 
 ---
 
-## Track Structure
+## Featured — Bike Rental Demand Forecasting (Weeks 2–4)
 
-### Week 1 — Classification Model / ML Foundations
+> A production-style system that forecasts **day-ahead hourly bike-rental demand** for a city-wide bike-sharing service — covering the full lifecycle from raw data to a served, versioned, fully-traceable model.
 
-Introduction to supervised machine learning using the Titanic dataset.
+**Stack:** Python · pandas · scikit-learn · XGBoost · LightGBM · Dagster · MLflow · LakeFS · FastAPI · Docker · Pytest · Ruff · uv
 
-Topics covered:
+- **Orchestrated lifecycle** as a Dagster asset graph: ingestion → feature engineering → evaluation → model registry → promotion → serving.
+- **Honest time-series evaluation** via walk-forward backtesting (steady-state R² ≈ 0.90) instead of a single lucky split.
+- **Automated model governance**: champion/challenger promotion through the MLflow registry — deploying a new model is an alias move, not a redeploy.
+- **Reproducibility & lineage**: every registered model traces back to its MLflow run, git commit, and the exact LakeFS data snapshot it trained on.
+- **No training–serving skew**: the prediction API computes features with the *same* code used in training, verified by tests.
 
-- exploratory data analysis
-- preprocessing and feature scaling
-- logistic regression with scikit-learn
-- logistic regression from scratch using NumPy
-- gradient descent optimization
-- custom evaluation metrics
-- ROC/AUC evaluation
-- automated testing and CI integration
+→ Full write-up, architecture, and results: [`01_bike_rental_forecasting/README.md`](01_bike_rental_forecasting/README.md)
 
 ---
 
-### Weeks 2–4 — Bike Rental Forecasting Project
+## All projects
 
-End-to-end machine learning engineering project focused on forecasting
-city-wide bike rental demand.
+### 00 — Classification Model (Week 1)
 
-Topics covered:
+A compact, from-first-principles introduction to supervised learning on the Titanic dataset: logistic regression both with scikit-learn and implemented from scratch in NumPy (gradient descent), plus custom evaluation metrics, ROC/AUC, and automated tests with CI. Deliberately small — the foundations warm-up before the main project.
 
-- data preprocessing pipelines
-- dataset validation and quarantine handling
-- feature engineering
-- workflow orchestration with Dagster
-- dataset generation and persistence
-- forecasting workflows
-- experiment tracking
-- reproducibility and MLOps foundations
+→ [`00_classification_model/`](00_classification_model/)
 
----
+### 01 — Bike Rental Demand Forecasting (Weeks 2–4)
 
-### Weeks 5–6 — Industry Challenge
+The featured project above: a full Dagster + MLflow + LakeFS + FastAPI MLOps system for day-ahead demand forecasting. See its [README](01_bike_rental_forecasting/README.md) for architecture, results, and setup.
 
-Team-based machine learning challenge in collaboration with an industry
-partner.
+→ [`01_bike_rental_forecasting/`](01_bike_rental_forecasting/)
 
-Challenge focus:
+### 02 — Industry Challenge (Weeks 5–6) — *upcoming*
 
-> Design, build, and present an end-to-end machine learning solution that
-> unlocks insights hidden in polymer material data.
-
-The final challenge will combine the concepts learned throughout the track into
-a complete ML engineering workflow including data preparation, model
-development, experimentation, and presentation.
+A team-based machine learning challenge with industry partner [moldflow.eu](https://moldflow.eu), working with polymer-material data. The goal is to design, build, and present an end-to-end ML solution that surfaces insights hidden in the data — combining the track's workflows into one applied, collaborative deliverable. *Details and code to be added as the challenge runs.*
 
 ---
 
-## Current Progress
+## What this repository demonstrates
 
-### 00 — Classification Model
+A deliberate progression from ML fundamentals to production MLOps:
 
-- [x] Repository setup
-- [x] Python project configuration
-- [x] Exploratory data analysis
-- [x] Logistic regression with scikit-learn
-- [x] Logistic regression from scratch using NumPy
-- [x] Custom evaluation metrics
-- [x] ROC AUC evaluation
-- [x] Automated unit tests
-- [x] CI integration
-- [x] Model comparison and parameter analysis
-
-### 01 — Bike Rental Forecasting
-
-- [x] Initial project structure
-- [x] Exploratory data analysis
-- [x] Preprocessing workflow design
-- [x] Dagster asset pipeline
-- [x] Structured dataset validation
-- [x] Quarantine handling
-- [x] Feature engineering
-- [x] Dataset materialization
-- [x] Automated tests
-- [x] CI integration
-- [ ] Forecasting model training
-- [ ] MLflow integration
-- [ ] Deployment-oriented workflows
-
-### 02 — Industry Challenge
-
-- [ ] Upcoming
+- **Fundamentals** — implementing models from scratch, evaluation metrics, gradient descent *(00)*.
+- **ML engineering** — reproducible pipelines, feature engineering, workflow orchestration, testing and CI *(01)*.
+- **MLOps** — experiment tracking, a model registry with automated promotion, data versioning and end-to-end lineage, and model serving *(01)*.
+- **Applied teamwork** — an industry challenge on real material data *(02)*.
 
 ---
 
 ## Technologies
 
-- Python
-- pandas
-- NumPy
-- scikit-learn
-- Dagster
-- MLflow
-- Jupyter Notebooks
-- Ruff
-- pytest
-- uv
-- GitHub Actions
+- **Core:** Python, pandas, NumPy, scikit-learn, XGBoost, LightGBM
+- **MLOps & orchestration:** Dagster, MLflow, LakeFS, FastAPI, Docker
+- **Tooling:** uv, Ruff, Pytest, GitHub Actions, Jupyter
 
 ---
 
-## Repository Structure
+## Repository structure
 
 ```text
 .
-├── 00_classification_model/
-│   ├── pyproject.toml
-│   ├── uv.lock
-│   ├── notebooks/
-│   ├── reports/
-│   ├── src/
-│   └── tests/
-│
-├── 01_bike_rental_forecasting/
-│   ├── pyproject.toml
-│   ├── uv.lock
-│   ├── data/
-│   ├── notebooks/
-│   ├── reports/
-│   ├── src/
-│   └── tests/
-│
-└── README.md
+├── 00_classification_model/      # Week 1   — fundamentals (Titanic, logistic regression)
+├── 01_bike_rental_forecasting/   # Weeks 2–4 — end-to-end MLOps system (featured)
+└── README.md                     # (02_industry_challenge added during Weeks 5–6)
 ```
 
----
-
-
-## Goals
-
-This repository focuses on building practical machine learning engineering
-skills, including:
-
-- understanding machine learning fundamentals
-- building reproducible preprocessing workflows
-- implementing ML models from scratch
-- structuring maintainable ML codebases
-- applying workflow orchestration
-- integrating testing and CI/CD
-- learning production-oriented MLOps practices
+Each project is self-contained, with its own `pyproject.toml` and `uv.lock` for isolated dependency and environment management.
 
 ---
 
 ## Quickstart
 
-Each project uses `uv` together with a dedicated `pyproject.toml` and
-`uv.lock` file for isolated dependency and environment management.
-
-### Classification Model
+Each project manages its own environment with `uv`.
 
 ```bash
-cd 00_classification_model
+# 00 — Classification (fundamentals)
+cd 00_classification_model && uv sync --dev
 
-uv sync --dev
-```
-
-### Bike Rental Forecasting
-
-```bash
-cd 01_bike_rental_forecasting
-
-uv sync --dev
-uv run dg dev
+# 01 — Bike Rental (full stack: LakeFS + MLflow + Dagster + API)
+cd 01_bike_rental_forecasting && make install
+# then follow the project README: services start via `make infra`, `make mlflow`, `make dev`, `make api`
 ```

@@ -11,8 +11,7 @@ from bike_rental.defs.assets.sources import (
     weather,
 )
 from bike_rental.defs.constants import (
-    BOOKED_RENTALS_COLUMNS,
-    DIRECT_PICKUPS_COLUMNS,
+    BIKE_RENTALS_COLUMNS,
     HOLIDAYS_COLUMNS,
     WEATHER_COLUMNS,
 )
@@ -42,7 +41,7 @@ def booked_rentals_schema(
     """Check that the booked rentals dataset contains the expected columns."""
     return _check_columns_exist(
         booked_rentals,
-        BOOKED_RENTALS_COLUMNS,
+        BIKE_RENTALS_COLUMNS,
     )
 
 
@@ -53,7 +52,7 @@ def direct_pickups_schema(
     """Check that the direct pickups dataset contains the expected columns."""
     return _check_columns_exist(
         direct_pickups,
-        DIRECT_PICKUPS_COLUMNS,
+        BIKE_RENTALS_COLUMNS,
     )
 
 

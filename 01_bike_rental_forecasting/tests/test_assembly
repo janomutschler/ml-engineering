@@ -1,0 +1,75 @@
+"""Tests for the shared feature-assembly helpers."""
+
+import numpy as np
+import pandas as pd
+
+from bike_rental.defs.preprocessing.assembly import (
+    assemble_modeling_features,
+    to_model_matrix,
+)
+
+
+def _pre_modeling_frame() -> pd.DataFrame:
+    """A tiny pre-modeling frame with the columns assembly expects."""
+    idx = pd.date_range("2024-01-01", periods=4, freq="h")
+    return pd.DataFrame(
+        {
+            "datetime_hour": idx,
+            "conditions": ["clear", "clouds", "clear", "light_rain"],
+            "temperature_c": [10.0, 11.0, 12.0, 13.0],
+            "humidity": [80.0, 81.0, 82.0, 83.0],
+            "hour": idx.hour,
+            "weekday": idx.weekday,
+            "month": idx.month,
+            "is_weekend": idx.weekday >= 5,
+            "is_holiday": False,
+            "total_rentals": [100, 120, 140, 160],
+        }
+    )
+
+
+def test_assemble_adds_cyclical_one_hot_and_historical_columns():
+    """It produces the engineered columns the model is trained on."""
+    result = assemble_modeling_features(_pre_modeling_frame())
+
+    for column in (
+        "hour_sin",
+        "hour_cos",
+        "month_sin",
+        "month_cos",
+        "lag_24h",
+        "lag_168h",
+        "same_hour_mean_7d",
+        "same_weekday_hour_mean_4w",
+        "conditions_clear",
+        "conditions_clouds",
+        "conditions_light_rain",
+    ):
+        assert column in result.columns
+
+
+def test_to_model_matrix_selects_orders_and_floats_columns():
+    """It returns exactly the requested columns, in order, as float64."""
+    df = pd.DataFrame(
+        {
+            "b": [1, 2],
+            "a": [True, False],
+            "ignored": [9, 9],
+        }
+    )
+
+    matrix = to_model_matrix(df, ["a", "b"])
+
+    assert list(matrix.columns) == ["a", "b"]
+    assert all(dtype == np.float64 for dtype in matrix.dtypes)
+    assert matrix["a"].tolist() == [1.0, 0.0]
+
+
+def test_to_model_matrix_fills_absent_columns_with_zero():
+    """A condition category missing from this slice becomes an all-zero column."""
+    df = pd.DataFrame({"present": [1.0, 2.0]})
+
+    matrix = to_model_matrix(df, ["present", "conditions_heavy_rain"])
+
+    assert (matrix["conditions_heavy_rain"] == 0.0).all()
+    assert matrix.isna().sum().sum() == 0

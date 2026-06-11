@@ -52,3 +52,6 @@ select = ["E", "F", "I", "B", "UP", "W", "D"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+filterwarnings = [
+    "ignore:SelectableGroups dict interface is deprecated:DeprecationWarning:opentelemetry.util._importlib_metadata",
+]

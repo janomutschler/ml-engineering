@@ -85,7 +85,7 @@ api:
 
 # Live smoke check: sends an example request to a running API and prints the
 # forecast. Requires the full stack up and a promoted champion model.
-smoke:
+predict:
 	uv run python scripts/api_example_request.py
 
 test:
