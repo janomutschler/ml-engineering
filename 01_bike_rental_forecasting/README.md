@@ -28,7 +28,7 @@ This is the short version of "why it's worth a look." Each point is explained in
 
 ## System architecture
 
-The pipeline is a Dagster asset graph. Data flows left to right; each node is a versioned, observable asset:
+The pipeline is a Dagster asset graph. Each node is a versioned, observable asset:
 
 ```mermaid
 flowchart TD
